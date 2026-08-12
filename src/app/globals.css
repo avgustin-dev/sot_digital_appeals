@@ -1,0 +1,151 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --sot-blue: #3c5ec7;
+  --sot-gold: #ffc000;
+  --sot-ink: #333333;
+  --sot-line: #e0e0e0;
+  --sot-bg: #f4f5f7;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-court-mist text-court-ink antialiased;
+  min-height: 100vh;
+  min-height: 100dvh;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+@supports (padding: max(0px)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2 text-sm font-medium
+      transition-colors
+      focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-court-blue
+      disabled:pointer-events-none disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-court-blue text-white hover:bg-court-navy;
+  }
+
+  .btn-gold {
+    @apply btn bg-court-gold text-court-ink hover:bg-court-goldSoft font-semibold;
+  }
+
+  .btn-outline {
+    @apply btn border border-court-line bg-white text-court-ink hover:border-court-blue hover:text-court-blue;
+  }
+
+  .btn-ghost {
+    @apply btn text-court-blue hover:underline;
+  }
+
+  .btn-danger {
+    @apply btn border border-court-danger bg-white text-court-danger hover:bg-red-50;
+  }
+
+  .input {
+    @apply w-full rounded-sm border border-court-line bg-white px-3 py-2 text-sm text-court-ink
+      placeholder:text-court-muted/70
+      focus:border-court-blue focus:outline-none focus:ring-1 focus:ring-court-blue;
+  }
+
+  .select {
+    @apply input appearance-none bg-white;
+  }
+
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-court-ink;
+  }
+
+  .card {
+    @apply rounded-sm border border-court-line bg-white;
+  }
+
+  .section-title {
+    @apply text-xl font-semibold text-court-ink sm:text-2xl;
+  }
+
+  /* Жёлтая линия под заголовком — как на sot.kg */
+  .sot-title {
+    @apply relative inline-block pb-2 text-lg font-semibold uppercase tracking-wide text-court-ink sm:text-xl;
+  }
+  .sot-title::after {
+    content: "";
+    @apply absolute bottom-0 left-0 h-1 w-16 bg-court-gold;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-sm border border-court-line bg-court-light px-2 py-0.5 text-xs font-medium text-court-navy;
+  }
+
+  .page-wrap {
+    @apply mx-auto max-w-6xl px-4 py-6 md:px-6 md:py-8;
+  }
+
+  .gov-panel {
+    @apply border border-court-line bg-white;
+  }
+
+  /* Плитки сервисов (как иконки на главной sot.kg) */
+  .sot-tile {
+    @apply flex flex-col items-center gap-2 border border-court-line bg-white p-4 text-center
+      transition-colors hover:border-court-blue hover:bg-court-light;
+  }
+  .sot-tile-icon {
+    @apply flex h-12 w-12 items-center justify-center rounded-full bg-court-light text-court-blue;
+  }
+}
+
+a {
+  color: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #eee;
+}
+::-webkit-scrollbar-thumb {
+  background: #aaa;
+  border-radius: 0;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+  }
+  header,
+  footer {
+    display: none !important;
+  }
+  .card {
+    border: 1px solid #999 !important;
+  }
+}
+
+@media (pointer: coarse) {
+  .btn,
+  .input {
+    min-height: 42px;
+  }
+}
