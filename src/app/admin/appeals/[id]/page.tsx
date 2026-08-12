@@ -1,16 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Bell, ClipboardList, History, UserCheck } from "lucide-react";
+import {
+  Bell,
+  ClipboardList,
+  History,
+  UserCheck,
+  Save,
+  Ban,
+  RotateCcw,
+  UserX,
+} from "lucide-react";
 import { useStore } from "@/lib/store";
-import { StageBadge } from "@/components/ui/Badge";
-import { CATEGORY_LABELS } from "@/lib/constants";
-import type { AppealCategory } from "@/lib/types";
-import { formatDateRu } from "@/lib/slots";
-import { stageProgress } from "@/lib/utils";
+import { StageBadge, StatusBadge } from "@/components/ui/Badge";
+import {
+  CATEGORY_LABELS,
+  STAGE_LABELS,
+  STATUS_LABELS,
+} from "@/lib/constants";
+import type { AppealCategory, AppealStage, AppointmentStatus } from "@/lib/types";
+import { formatDateRu, listAvailableDates, getAvailableSlotsForDate } from "@/lib/slots";
+import { stageProgress, cn } from "@/lib/utils";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { Collapsible } from "@/components/ui/Collapsible";
 import { useI18n } from "@/lib/i18n";
 
 export default function AppealDetailPage() {
@@ -22,6 +36,12 @@ export default function AppealDetailPage() {
     startPrep,
     completePrep,
     getPreviousAppeals,
+    staffCancelAppointment,
+    staffRestoreAppointment,
+    staffSetAppointmentStatus,
+    staffRescheduleAppointment,
+    staffUpdateCitizenData,
+    staffSetAppealStage,
   } = useStore();
   const { t } = useI18n();
 
@@ -34,12 +54,62 @@ export default function AppealDetailPage() {
     [appeal, getPreviousAppeals]
   );
 
-  const [summary, setSummary] = useState(appeal?.summary || "");
-  const [prepNotes, setPrepNotes] = useState(appeal?.prepNotes || "");
-  const [category, setCategory] = useState<AppealCategory>(
-    appeal?.category || "organization"
-  );
+  const [summary, setSummary] = useState("");
+  const [prepNotes, setPrepNotes] = useState("");
+  const [category, setCategory] = useState<AppealCategory>("organization");
   const [msg, setMsg] = useState("");
+  const [err, setErr] = useState(false);
+
+  // edit citizen
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [topic, setTopic] = useState("");
+  const [description, setDescription] = useState("");
+  const [editCategory, setEditCategory] = useState<AppealCategory>("organization");
+
+  // reschedule
+  const [newDate, setNewDate] = useState("");
+  const [newSlotStart, setNewSlotStart] = useState("");
+  const [newSlotEnd, setNewSlotEnd] = useState("");
+  const [stageSelect, setStageSelect] = useState<AppealStage>("registered");
+  const [statusSelect, setStatusSelect] = useState<AppointmentStatus>("confirmed");
+
+  useEffect(() => {
+    if (!appeal) return;
+    setSummary(appeal.summary || "");
+    setPrepNotes(appeal.prepNotes || "");
+    setCategory(appeal.category);
+    setEditCategory(appeal.category);
+    setFullName(appeal.fullName);
+    setPhone(appeal.phone);
+    setEmail(appeal.email || "");
+    setTopic(appeal.topic);
+    setDescription(appeal.summary || "");
+    setStageSelect(appeal.stage);
+  }, [appeal?.id, appeal?.updatedAt]);
+
+  useEffect(() => {
+    if (!appointment) return;
+    setNewDate(appointment.date);
+    setNewSlotStart(appointment.slotStart);
+    setNewSlotEnd(appointment.slotEnd);
+    setStatusSelect(appointment.status);
+  }, [appointment?.id, appointment?.updatedAt]);
+
+  const dates = useMemo(
+    () => listAvailableDates(state.calendar),
+    [state.calendar]
+  );
+  const freeSlots = useMemo(() => {
+    if (!newDate || !appointment) return [];
+    return getAvailableSlotsForDate(
+      newDate,
+      state.calendar,
+      state.appointments,
+      appointment.id
+    );
+  }, [newDate, state.calendar, state.appointments, appointment]);
 
   if (!appeal) {
     return (
@@ -53,26 +123,84 @@ export default function AppealDetailPage() {
   }
 
   const progress = stageProgress(appeal.stage);
+  const canManage =
+    !!currentUser &&
+    ["reception", "admin", "leadership"].includes(currentUser.role);
   const canPrep =
-    currentUser &&
-    ["reception", "admin", "leadership"].includes(currentUser.role) &&
-    ["registered", "under_review"].includes(appeal.stage);
+    canManage && ["registered", "under_review"].includes(appeal.stage);
+
+  function flash(ok: boolean, text: string) {
+    setErr(!ok);
+    setMsg(text);
+  }
 
   function onStartPrep() {
-    if (!currentUser) return;
-    startPrep(appeal!.id, currentUser);
-    setMsg("Карточка переведена в предварительное изучение.");
+    if (!currentUser || !appeal) return;
+    startPrep(appeal.id, currentUser);
+    flash(true, "Переведено в предварительное изучение.");
   }
 
   function onCompletePrep(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentUser) return;
-    completePrep(appeal!.id, currentUser, { summary, prepNotes, category });
-    setMsg("Подготовка завершена. Обращение готово к личному приёму.");
+    if (!currentUser || !appeal) return;
+    completePrep(appeal.id, currentUser, { summary, prepNotes, category });
+    flash(true, "Подготовка завершена. Готово к личному приёму.");
+  }
+
+  function onSaveCitizen(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentUser || !appointment) return;
+    const res = staffUpdateCitizenData(
+      appointment.id,
+      {
+        fullName,
+        phone,
+        email,
+        topic,
+        category: editCategory,
+        description,
+      },
+      currentUser
+    );
+    flash(res.ok, res.ok ? "Данные сохранены." : res.error);
+  }
+
+  function onReschedule(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentUser || !appointment) return;
+    const res = staffRescheduleAppointment(
+      appointment.id,
+      newDate,
+      newSlotStart,
+      newSlotEnd,
+      currentUser
+    );
+    flash(res.ok, res.ok ? "Дата/время обновлены." : res.error);
+  }
+
+  function onStage(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentUser || !appeal) return;
+    const res = staffSetAppealStage(appeal.id, stageSelect, currentUser);
+    flash(res.ok, res.ok ? `Этап: ${STAGE_LABELS[stageSelect]}` : res.error);
+  }
+
+  function onStatus(e: React.FormEvent) {
+    e.preventDefault();
+    if (!currentUser || !appointment) return;
+    const res = staffSetAppointmentStatus(
+      appointment.id,
+      statusSelect,
+      currentUser
+    );
+    flash(
+      res.ok,
+      res.ok ? `Статус записи: ${STATUS_LABELS[statusSelect]}` : res.error
+    );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Breadcrumbs
         items={[
           { label: t.crumbs.admin, href: "/admin" },
@@ -80,36 +208,53 @@ export default function AppealDetailPage() {
           { label: appeal.code },
         ]}
       />
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="font-display text-3xl font-semibold text-court-navy">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="font-display text-2xl font-semibold text-court-navy sm:text-3xl">
               {appeal.code}
             </h1>
             <StageBadge stage={appeal.stage} />
+            {appointment && <StatusBadge status={appointment.status} />}
           </div>
-          <p className="mt-1 text-court-muted">{appeal.fullName}</p>
+          <p className="mt-1 text-slate-600">{appeal.fullName}</p>
+          <p className="text-sm text-slate-500">
+            {appeal.phone}
+            {appointment &&
+              ` · ${formatDateRu(appointment.date)} ${appointment.slotStart}–${appointment.slotEnd}`}
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/admin/reception" className="btn-outline">
-            Личный приём
+          <Link href="/admin/reception" className="btn-outline !text-sm">
+            Приём
           </Link>
-          <Link href="/admin/control" className="btn-outline">
+          <Link href="/admin/control" className="btn-outline !text-sm">
             Контроль
+          </Link>
+          <Link href="/admin/calendar" className="btn-outline !text-sm">
+            Календарь
           </Link>
         </div>
       </div>
 
       {msg && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        <div
+          className={cn(
+            "rounded-lg border px-4 py-3 text-sm",
+            err
+              ? "border-red-200 bg-red-50 text-red-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-900"
+          )}
+        >
           {msg}
         </div>
       )}
 
-      <div className="card p-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="mb-2 flex justify-between text-sm">
-          <span className="text-court-muted">Прогресс цикла</span>
-          <span className="font-semibold text-court-navy">{progress}%</span>
+          <span className="text-slate-500">Прогресс цикла</span>
+          <span className="font-semibold text-slate-900">{progress}%</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-slate-100">
           <div
@@ -119,92 +264,364 @@ export default function AppealDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <section className="card p-5">
-            <div className="mb-4 flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-court-gold" />
-              <h2 className="font-display text-xl font-semibold text-court-navy">
-                Электронная карточка
-              </h2>
-            </div>
-            <dl className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-court-muted">
-                  Тема
-                </dt>
-                <dd className="font-medium text-court-ink">{appeal.topic}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-court-muted">
-                  Категория
-                </dt>
-                <dd className="font-medium text-court-ink">
-                  {CATEGORY_LABELS[appeal.category]}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-court-muted">
-                  Телефон
-                </dt>
-                <dd className="font-medium text-court-ink">{appeal.phone}</dd>
-              </div>
-              <div>
-                <dt className="text-xs uppercase tracking-wider text-court-muted">
-                  Email
-                </dt>
-                <dd className="font-medium text-court-ink">
-                  {appeal.email || "—"}
-                </dd>
-              </div>
-              {appointment && (
+      {/* Quick actions — always visible */}
+      {canManage && appointment && (
+        <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">
+            Быстрые действия
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {appointment.status !== "cancelled" &&
+              appointment.status !== "completed" && (
                 <>
-                  <div>
-                    <dt className="text-xs uppercase tracking-wider text-court-muted">
-                      Дата приёма
-                    </dt>
-                    <dd className="font-medium text-court-ink">
-                      {formatDateRu(appointment.date)}, {appointment.slotStart}–
-                      {appointment.slotEnd}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs uppercase tracking-wider text-court-muted">
-                      Статус записи
-                    </dt>
-                    <dd className="font-medium text-court-ink">
-                      {appointment.status}
-                    </dd>
-                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                    onClick={() => {
+                      if (!currentUser) return;
+                      const r = staffSetAppointmentStatus(
+                        appointment.id,
+                        "no_show",
+                        currentUser
+                      );
+                      flash(r.ok, r.ok ? "Неявка" : r.error);
+                    }}
+                  >
+                    <UserX className="h-3.5 w-3.5" />
+                    Неявка
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-800 hover:bg-red-100"
+                    onClick={() => {
+                      if (
+                        !currentUser ||
+                        !confirm("Отменить запись и обращение?")
+                      )
+                        return;
+                      const r = staffCancelAppointment(
+                        appointment.id,
+                        currentUser
+                      );
+                      flash(r.ok, r.ok ? "Отменено" : r.error);
+                    }}
+                  >
+                    <Ban className="h-3.5 w-3.5" />
+                    Отменить
+                  </button>
                 </>
               )}
-            </dl>
-            <div className="mt-4 rounded-xl bg-court-mist p-4 text-sm">
-              <div className="mb-1 text-xs uppercase tracking-wider text-court-muted">
-                Краткое содержание
+            {(appointment.status === "cancelled" ||
+              appointment.status === "no_show") && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100"
+                onClick={() => {
+                  if (!currentUser) return;
+                  const r = staffRestoreAppointment(
+                    appointment.id,
+                    currentUser
+                  );
+                  flash(
+                    r.ok,
+                    r.ok ? "Восстановлено → ожидание (регистрация)" : r.error
+                  );
+                }}
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Вернуть в ожидание
+              </button>
+            )}
+            {appeal.stage === "registered" && (
+              <button
+                type="button"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-court-navy px-3 py-2 text-xs font-semibold text-white hover:bg-court-navy/90"
+                onClick={onStartPrep}
+              >
+                Начать подготовку
+              </button>
+            )}
+            {appeal.stage === "ready_for_reception" && (
+              <Link
+                href="/admin/reception"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-court-navy px-3 py-2 text-xs font-semibold text-white"
+              >
+                К приёму →
+              </Link>
+            )}
+            {appeal.stage === "in_control" && (
+              <Link
+                href="/admin/control"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-court-navy px-3 py-2 text-xs font-semibold text-white"
+              >
+                К контролю →
+              </Link>
+            )}
+          </div>
+        </section>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="space-y-3 lg:col-span-2">
+          <Collapsible
+            title="Карточка гражданина"
+            subtitle="ФИО, контакты, тема — можно править"
+            defaultOpen
+            badge={
+              <ClipboardList className="h-4 w-4 text-slate-400" />
+            }
+          >
+            {canManage && appointment ? (
+              <form onSubmit={onSaveCitizen} className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <label className="block space-y-1">
+                    <span className="text-xs font-semibold text-slate-600">
+                      ФИО
+                    </span>
+                    <input
+                      className="input w-full"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs font-semibold text-slate-600">
+                      Телефон
+                    </span>
+                    <input
+                      className="input w-full"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs font-semibold text-slate-600">
+                      Email
+                    </span>
+                    <input
+                      className="input w-full"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                    />
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs font-semibold text-slate-600">
+                      Категория
+                    </span>
+                    <select
+                      className="input w-full"
+                      value={editCategory}
+                      onChange={(e) =>
+                        setEditCategory(e.target.value as AppealCategory)
+                      }
+                    >
+                      {(Object.keys(CATEGORY_LABELS) as AppealCategory[]).map(
+                        (k) => (
+                          <option key={k} value={k}>
+                            {CATEGORY_LABELS[k]}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </label>
+                  <label className="block space-y-1 sm:col-span-2">
+                    <span className="text-xs font-semibold text-slate-600">
+                      Тема
+                    </span>
+                    <input
+                      className="input w-full"
+                      value={topic}
+                      onChange={(e) => setTopic(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <label className="block space-y-1 sm:col-span-2">
+                    <span className="text-xs font-semibold text-slate-600">
+                      Содержание / описание
+                    </span>
+                    <textarea
+                      className="input min-h-[72px] w-full"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                    />
+                  </label>
+                </div>
+                <button type="submit" className="btn-primary !text-sm">
+                  <Save className="h-4 w-4" />
+                  Сохранить данные
+                </button>
+              </form>
+            ) : (
+              <dl className="grid gap-3 text-sm sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs text-slate-500">Тема</dt>
+                  <dd className="font-medium">{appeal.topic}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-slate-500">Категория</dt>
+                  <dd className="font-medium">
+                    {CATEGORY_LABELS[appeal.category]}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-xs text-slate-500">Содержание</dt>
+                  <dd>{appeal.summary}</dd>
+                </div>
+              </dl>
+            )}
+          </Collapsible>
+
+          {canManage && appointment && (
+            <Collapsible
+              title="Дата, время и статусы"
+              subtitle="Перенос · статус записи · этап пайплайна"
+              defaultOpen
+            >
+              <div className="space-y-5">
+                <form onSubmit={onReschedule} className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Перенос приёма
+                  </h3>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <label className="block space-y-1">
+                      <span className="text-xs font-medium text-slate-600">
+                        Дата
+                      </span>
+                      <select
+                        className="input w-full"
+                        value={newDate}
+                        onChange={(e) => {
+                          setNewDate(e.target.value);
+                          setNewSlotStart("");
+                          setNewSlotEnd("");
+                        }}
+                      >
+                        {dates.map((d) => (
+                          <option key={d} value={d}>
+                            {formatDateRu(d)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="block space-y-1 sm:col-span-2">
+                      <span className="text-xs font-medium text-slate-600">
+                        Свободный слот
+                      </span>
+                      <select
+                        className="input w-full"
+                        value={newSlotStart}
+                        onChange={(e) => {
+                          const s = freeSlots.find(
+                            (x) => x.start === e.target.value
+                          );
+                          setNewSlotStart(e.target.value);
+                          if (s) setNewSlotEnd(s.end);
+                        }}
+                      >
+                        <option value="">— выбрать —</option>
+                        {freeSlots.map((s) => (
+                          <option key={s.start} value={s.start}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Сейчас: {formatDateRu(appointment.date)}{" "}
+                    {appointment.slotStart}–{appointment.slotEnd}
+                  </p>
+                  <button type="submit" className="btn-outline !text-sm">
+                    Перенести
+                  </button>
+                </form>
+
+                <form
+                  onSubmit={onStatus}
+                  className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4"
+                >
+                  <label className="block min-w-[180px] flex-1 space-y-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Статус записи
+                    </span>
+                    <select
+                      className="input w-full"
+                      value={statusSelect}
+                      onChange={(e) =>
+                        setStatusSelect(e.target.value as AppointmentStatus)
+                      }
+                    >
+                      {(
+                        Object.keys(STATUS_LABELS) as AppointmentStatus[]
+                      ).map((k) => (
+                        <option key={k} value={k}>
+                          {STATUS_LABELS[k]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button type="submit" className="btn-outline !text-sm">
+                    Применить статус
+                  </button>
+                </form>
+
+                <form
+                  onSubmit={onStage}
+                  className="flex flex-wrap items-end gap-3 border-t border-slate-100 pt-4"
+                >
+                  <label className="block min-w-[220px] flex-1 space-y-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                      Этап обращения
+                    </span>
+                    <select
+                      className="input w-full"
+                      value={stageSelect}
+                      onChange={(e) =>
+                        setStageSelect(e.target.value as AppealStage)
+                      }
+                    >
+                      {(Object.keys(STAGE_LABELS) as AppealStage[]).map(
+                        (k) => (
+                          <option key={k} value={k}>
+                            {STAGE_LABELS[k]}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  </label>
+                  <button type="submit" className="btn-outline !text-sm">
+                    Сменить этап
+                  </button>
+                </form>
               </div>
-              {appeal.summary}
-            </div>
-          </section>
+            </Collapsible>
+          )}
 
           {canPrep && (
-            <section className="card p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <UserCheck className="h-5 w-5 text-court-gold" />
-                <h2 className="font-display text-xl font-semibold text-court-navy">
-                  Этап 2 · Предварительное изучение
-                </h2>
-              </div>
+            <Collapsible
+              title="Этап 2 · Подготовка"
+              subtitle="Предварительное изучение для руководства"
+              defaultOpen={appeal.stage === "under_review"}
+              badge={<UserCheck className="h-4 w-4 text-slate-400" />}
+            >
               {appeal.stage === "registered" && (
-                <button type="button" className="btn-primary mb-4" onClick={onStartPrep}>
+                <button
+                  type="button"
+                  className="btn-primary mb-4 !text-sm"
+                  onClick={onStartPrep}
+                >
                   Начать изучение
                 </button>
               )}
-              <form onSubmit={onCompletePrep} className="space-y-4">
-                <div>
-                  <label className="label">Категория</label>
+              <form onSubmit={onCompletePrep} className="space-y-3">
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold text-slate-600">
+                    Категория
+                  </span>
                   <select
-                    className="input"
+                    className="input w-full"
                     value={category}
                     onChange={(e) =>
                       setCategory(e.target.value as AppealCategory)
@@ -218,167 +635,174 @@ export default function AppealDetailPage() {
                       )
                     )}
                   </select>
-                </div>
-                <div>
-                  <label className="label">Краткое содержание (для руководства)</label>
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold text-slate-600">
+                    Краткое содержание (для руководства)
+                  </span>
                   <textarea
-                    className="input min-h-[80px]"
+                    className="input min-h-[72px] w-full"
                     value={summary}
                     onChange={(e) => setSummary(e.target.value)}
                     required
                   />
-                </div>
-                <div>
-                  <label className="label">
-                    Заметки предварительной беседы / разъяснения
-                  </label>
+                </label>
+                <label className="block space-y-1">
+                  <span className="text-xs font-semibold text-slate-600">
+                    Заметки подготовки
+                  </span>
                   <textarea
-                    className="input min-h-[100px]"
+                    className="input min-h-[88px] w-full"
                     value={prepNotes}
                     onChange={(e) => setPrepNotes(e.target.value)}
                     required
                   />
-                </div>
-                <button type="submit" className="btn-gold">
-                  Завершить подготовку к приёму
+                </label>
+                <button type="submit" className="btn-gold !text-sm">
+                  Завершить подготовку
                 </button>
               </form>
-            </section>
+            </Collapsible>
           )}
 
           {appeal.prepNotes && (
-            <section className="card p-5">
-              <h2 className="font-display text-xl font-semibold text-court-navy">
-                Материалы подготовки
-              </h2>
-              <p className="mt-3 whitespace-pre-wrap text-sm text-court-muted">
+            <Collapsible title="Материалы подготовки" defaultOpen={false}>
+              <p className="whitespace-pre-wrap text-sm text-slate-600">
                 {appeal.prepNotes}
               </p>
               {appeal.prepCompletedBy && (
-                <p className="mt-3 text-xs text-court-muted">
-                  Подготовил: {appeal.prepCompletedBy}
+                <p className="mt-2 text-xs text-slate-400">
+                  {appeal.prepCompletedBy}
                   {appeal.prepCompletedAt &&
                     ` · ${new Date(appeal.prepCompletedAt).toLocaleString("ru-RU")}`}
                 </p>
               )}
-            </section>
+            </Collapsible>
           )}
 
           {appeal.receptionProtocol && (
-            <section className="card p-5">
-              <h2 className="font-display text-xl font-semibold text-court-navy">
-                Протокол приёма
-              </h2>
-              <dl className="mt-3 space-y-3 text-sm">
+            <Collapsible title="Протокол приёма" defaultOpen={false}>
+              <dl className="space-y-3 text-sm">
                 <div>
-                  <dt className="text-xs uppercase text-court-muted">Заявление гражданина</dt>
+                  <dt className="text-xs text-slate-500">Заявление</dt>
                   <dd>{appeal.receptionProtocol.citizenStatement}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase text-court-muted">Разъяснение руководства</dt>
+                  <dt className="text-xs text-slate-500">Разъяснение</dt>
                   <dd>{appeal.receptionProtocol.leadershipExplanation}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase text-court-muted">Поручение</dt>
+                  <dt className="text-xs text-slate-500">Поручение</dt>
                   <dd>{appeal.receptionProtocol.assignmentText}</dd>
                 </div>
                 <div>
-                  <dt className="text-xs uppercase text-court-muted">Ответственный</dt>
+                  <dt className="text-xs text-slate-500">Ответственный</dt>
                   <dd>{appeal.receptionProtocol.responsibleName}</dd>
                 </div>
               </dl>
-            </section>
+            </Collapsible>
           )}
 
           {appeal.finalAnswer && (
-            <section className="card border-emerald-200 bg-emerald-50/40 p-5">
-              <h2 className="font-display text-xl font-semibold text-court-navy">
-                Ответ гражданину
-              </h2>
-              <p className="mt-3 whitespace-pre-wrap text-sm">{appeal.finalAnswer}</p>
-            </section>
+            <Collapsible
+              title="Ответ гражданину"
+              defaultOpen
+              className="!border-emerald-200"
+            >
+              <p className="whitespace-pre-wrap text-sm">
+                {appeal.finalAnswer}
+              </p>
+            </Collapsible>
           )}
         </div>
 
-        <div className="space-y-6">
-          <section className="card p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <History className="h-5 w-5 text-court-gold" />
-              <h2 className="font-semibold text-court-navy">Предыдущие обращения</h2>
-            </div>
-            <p className="mb-3 text-xs text-court-muted">{appeal.previousNotes}</p>
+        <div className="space-y-3">
+          <Collapsible
+            title="Предыдущие обращения"
+            defaultOpen={previous.length > 0}
+            badge={<History className="h-4 w-4 text-slate-400" />}
+          >
+            <p className="mb-2 text-xs text-slate-500">{appeal.previousNotes}</p>
             {previous.length === 0 ? (
-              <p className="text-sm text-court-muted">Нет связанных обращений.</p>
+              <p className="text-sm text-slate-400">Нет связанных.</p>
             ) : (
               <ul className="space-y-2">
                 {previous.map((p) => (
                   <li key={p.id}>
                     <Link
                       href={`/admin/appeals/${p.id}`}
-                      className="block rounded-lg border border-court-line px-3 py-2 text-sm hover:bg-court-mist"
+                      className="block rounded-lg border border-slate-200 px-3 py-2 text-sm hover:bg-slate-50"
                     >
                       <div className="font-mono font-semibold text-court-blue">
                         {p.code}
                       </div>
-                      <div className="text-court-muted">{p.topic}</div>
+                      <div className="text-slate-500">{p.topic}</div>
                     </Link>
                   </li>
                 ))}
               </ul>
             )}
-          </section>
+          </Collapsible>
 
-          <section className="card p-5">
-            <div className="mb-3 flex items-center gap-2">
-              <Bell className="h-5 w-5 text-court-gold" />
-              <h2 className="font-semibold text-court-navy">Уведомления</h2>
-            </div>
-            <ul className="max-h-64 space-y-2 overflow-y-auto">
-              {appeal.notifications.map((n) => (
-                <li
-                  key={n.id}
-                  className="rounded-lg border border-court-line px-3 py-2 text-xs"
-                >
-                  <div className="font-semibold text-court-navy">{n.title}</div>
-                  <div className="mt-1 text-court-muted">{n.body}</div>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {appeal.controlLog.length > 0 && (
-            <section className="card p-5">
-              <h2 className="mb-3 font-semibold text-court-navy">Журнал контроля</h2>
-              <ul className="space-y-2 text-xs">
+          <Collapsible
+            title="Журнал и уведомления"
+            defaultOpen={false}
+            badge={<Bell className="h-4 w-4 text-slate-400" />}
+          >
+            {appeal.controlLog.length > 0 && (
+              <ul className="mb-4 max-h-40 space-y-2 overflow-y-auto text-xs">
                 {appeal.controlLog.map((c) => (
-                  <li key={c.id} className="rounded-lg bg-court-mist px-3 py-2">
+                  <li key={c.id} className="rounded-lg bg-slate-50 px-3 py-2">
                     <div className="font-semibold">{c.action}</div>
-                    <div className="text-court-muted">{c.comment}</div>
-                    <div className="mt-1 text-[10px] text-court-muted">
+                    <div className="text-slate-500">{c.comment}</div>
+                    <div className="mt-1 text-[10px] text-slate-400">
                       {c.authorName} ·{" "}
                       {new Date(c.at).toLocaleString("ru-RU")}
                     </div>
                   </li>
                 ))}
               </ul>
-            </section>
+            )}
+            <ul className="max-h-48 space-y-2 overflow-y-auto">
+              {appeal.notifications.map((n) => (
+                <li
+                  key={n.id}
+                  className="rounded-lg border border-slate-100 px-3 py-2 text-xs"
+                >
+                  <div className="font-semibold text-slate-800">{n.title}</div>
+                  <div className="mt-1 text-slate-500">{n.body}</div>
+                </li>
+              ))}
+            </ul>
+          </Collapsible>
+
+          {appointment && appointment.history.length > 0 && (
+            <Collapsible title="История записи" defaultOpen={false}>
+              <ul className="max-h-40 space-y-2 overflow-y-auto text-xs">
+                {[...appointment.history].reverse().map((h, i) => (
+                  <li key={i} className="rounded-lg bg-slate-50 px-3 py-2">
+                    <div className="font-semibold">{h.action}</div>
+                    {h.detail && (
+                      <div className="text-slate-500">{h.detail}</div>
+                    )}
+                    <div className="mt-1 text-[10px] text-slate-400">
+                      {new Date(h.at).toLocaleString("ru-RU")}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Collapsible>
           )}
 
           {appeal.feedback && (
-            <section className="card p-5">
-              <h2 className="mb-2 font-semibold text-court-navy">Оценка гражданина</h2>
+            <Collapsible title="Оценка гражданина" defaultOpen>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div>Уважение: {appeal.feedback.respectful}/5</div>
                 <div>Ясность: {appeal.feedback.clearNextSteps}/5</div>
                 <div>Удобство: {appeal.feedback.convenient}/5</div>
                 <div>Сроки: {appeal.feedback.deadlinesMet}/5</div>
               </div>
-              {appeal.feedback.comment && (
-                <p className="mt-2 text-xs text-court-muted">
-                  {appeal.feedback.comment}
-                </p>
-              )}
-            </section>
+            </Collapsible>
           )}
         </div>
       </div>

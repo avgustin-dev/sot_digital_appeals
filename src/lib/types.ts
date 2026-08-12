@@ -213,6 +213,68 @@ export interface SurveyMeta {
   courtNameKy: string;
 }
 
+/** CMS: тексты публичного сервиса приёма (редактируется в админке) */
+export interface BookingRulesContent {
+  titleRu: string;
+  titleKy: string;
+  welcomeRu: string;
+  welcomeKy: string;
+  rulesRu: string[];
+  rulesKy: string[];
+  cannotTitleRu: string;
+  cannotTitleKy: string;
+  cannotRu: string[];
+  cannotKy: string[];
+  deleteNoteRu: string;
+  deleteNoteKy: string;
+  agreeRu: string;
+  agreeKy: string;
+}
+
+export interface ServiceContent {
+  hubTitleRu: string;
+  hubTitleKy: string;
+  hubLeadRu: string;
+  hubLeadKy: string;
+  hubCtaRu: string;
+  hubCtaKy: string;
+  memoTitleRu: string;
+  memoTitleKy: string;
+  memoItemsRu: string[];
+  memoItemsKy: string[];
+  allowedRu: string[];
+  allowedKy: string[];
+  forbiddenRu: string[];
+  forbiddenKy: string[];
+  bookTitleRu: string;
+  bookTitleKy: string;
+  bookSubtitleRu: string;
+  bookSubtitleKy: string;
+  rules: BookingRulesContent;
+}
+
+export type AdminModule = "reception" | "survey";
+
+/** Дерево допуска (сереализуемая копия EligibilityNode) */
+export type EligibilityTreeNode = {
+  id: string;
+  labelRu: string;
+  labelKy: string;
+  children?: EligibilityTreeNode[];
+  allowed?: boolean;
+  category?: AppealCategory;
+  topicRu?: string;
+  topicKy?: string;
+  refusal?: {
+    greetingRu: string;
+    greetingKy: string;
+    bodyRu: string[];
+    bodyKy: string[];
+    closingRu: string;
+    closingKy: string;
+  };
+};
+
 export interface PlatformState {
   version: number;
   calendar: CalendarSettings;
@@ -223,4 +285,8 @@ export interface PlatformState {
   surveyMeta: SurveyMeta;
   surveyQuestions: SurveyQuestion[];
   surveyResponses: SurveyResponse[];
+  serviceContent: ServiceContent;
+  adminModule: AdminModule;
+  /** Дерево шага «Допуск» — редактируется в CMS */
+  eligibilityTree: EligibilityTreeNode[];
 }

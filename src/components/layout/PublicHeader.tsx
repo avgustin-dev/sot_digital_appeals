@@ -14,13 +14,14 @@ export function PublicHeader() {
   const [open, setOpen] = useState(false);
   const { t } = useI18n();
 
+  /** Опросник судов — отдельный opros.sot.kg. Оценка приёма/записи — важная часть сервиса. */
   const links = [
     { href: "/", label: t.nav.home },
     { href: "/book", label: t.nav.book },
     { href: "/my-appointment", label: t.nav.myAppointment },
     { href: "/feedback", label: t.nav.feedback },
     { href: "/rules", label: t.footer.rules },
-    { href: "/process", label: t.footer.process },
+    { href: "/process", label: `${t.footer.process} · демо` },
   ];
 
   return (
@@ -36,12 +37,12 @@ export function PublicHeader() {
 
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 md:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2.5">
-          <EmblemKR size={40} priority />
+          <EmblemKR size={44} priority />
           <div className="min-w-0">
-            <div className="text-[11px] font-semibold uppercase leading-tight tracking-wide text-court-navy">
-              {t.orgShort}
+            <div className="line-clamp-2 text-[11px] font-semibold leading-snug text-court-navy sm:text-xs">
+              {t.orgName}
             </div>
-            <div className="truncate text-sm font-semibold leading-snug text-court-ink sm:text-base">
+            <div className="truncate text-sm font-medium leading-snug text-court-ink">
               {t.appName}
             </div>
           </div>

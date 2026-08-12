@@ -3,15 +3,15 @@ import type { Dict } from "./types";
 export const ky: Dict = {
   lang: "ky",
   langName: "Кыргызча",
-  orgShort: "КР ЖС",
+  orgShort: "Кыргыз Республикасынын Жогорку соту",
   orgName: "Кыргыз Республикасынын Жогорку соту",
-  appName: "Жарандарды кабыл алуу",
+  appName: "Жетекчилик тарабынан кабыл алуу",
   nav: {
     home: "Башкы бет",
     book: "Кабыл алууга жазылуу",
     myAppointment: "Менин жазылууум",
     feedback: "Кабыл алууну баалоо",
-    bookCta: "Жазылуу",
+    bookCta: "Кабыл алууга жазылуу",
     menu: "Меню",
   },
   common: {

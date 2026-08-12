@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 import { EmblemKR } from "@/components/brand/Emblem";
+import { COURT_CONTACTS } from "@/lib/constants";
 
 export function PublicFooter() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isKy = lang === "ky";
 
   return (
     <footer className="no-print mt-auto border-t-2 border-court-navy bg-court-deep text-white">
@@ -22,6 +24,17 @@ export function PublicFooter() {
           </div>
           <p className="text-sm leading-relaxed text-white/65">
             {t.footer.reception}. {t.footer.demo}.
+          </p>
+          <p className="mt-3 text-xs leading-relaxed text-white/55">
+            {isKy ? COURT_CONTACTS.addressKy : COURT_CONTACTS.addressRu}
+            <br />
+            {isKy ? "Ишеним телефону" : "Телефон доверия"}:{" "}
+            <a
+              href={`tel:${COURT_CONTACTS.trustPhoneTel}`}
+              className="font-medium text-white/85 hover:underline"
+            >
+              {COURT_CONTACTS.trustPhone}
+            </a>
           </p>
         </div>
 
@@ -69,7 +82,7 @@ export function PublicFooter() {
                 href="/process"
                 className="hover:text-white hover:underline"
               >
-                {t.footer.process}
+                {t.footer.process} (демо)
               </Link>
             </li>
           </ul>

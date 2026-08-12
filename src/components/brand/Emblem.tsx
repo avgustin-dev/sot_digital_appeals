@@ -1,7 +1,7 @@
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
-/** Логотип ВС КР из public/brand (без SVG-заглушек) */
+/** Официальный логотип Верховного суда Кыргызской Республики (public/brand) */
 const LOGO_SRC = "/brand/supreme-court-logo.png";
 const LOGO_ALT =
   "Эмблема Верховного суда Кыргызской Республики";

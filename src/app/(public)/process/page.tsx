@@ -79,6 +79,12 @@ export default function ProcessPage() {
           { label: t.crumbs.process },
         ]}
       />
+      <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <strong>Демонстрационный раздел.</strong> Страница поясняет этапы
+        работы сервиса для согласования. В официальной версии портала
+        отдельный публичный раздел «Порядок работы» может отсутствовать —
+        гражданину достаточно записи, правил и статуса обращения.
+      </div>
       <h1 className="section-title mb-2">{t.home.cycle}</h1>
       <p className="mb-8 max-w-3xl text-base text-court-muted">
         {t.home.cycleLead}

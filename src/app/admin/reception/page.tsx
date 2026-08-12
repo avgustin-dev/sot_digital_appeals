@@ -165,24 +165,48 @@ export default function ReceptionPage() {
           </h2>
           {!selected ? (
             <p className="text-sm text-court-muted">
-              Выберите обращение из очереди. Рекомендуется завершить
-              предварительное изучение до приёма.
+              Выберите обращение из очереди. До фиксации приёма рекомендуется
+              завершить предварительное изучение электронной карточки.
             </p>
           ) : (
             <>
-              <div className="mb-4 rounded-xl bg-court-mist p-3 text-sm">
-                <div className="font-semibold text-court-navy">
-                  {selected.appeal.fullName}
+              <div className="mb-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+                <div className="grid gap-1 sm:grid-cols-2">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Заявитель
+                    </div>
+                    <div className="font-semibold text-court-navy">
+                      {selected.appeal.fullName}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Рег. код / телефон
+                    </div>
+                    <div className="font-mono text-sm">
+                      {selected.appeal.code} · {selected.appeal.phone}
+                    </div>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                      Тема обращения
+                    </div>
+                    <div className="text-slate-800">{selected.appeal.topic}</div>
+                  </div>
                 </div>
-                <div className="text-court-muted">{selected.appeal.summary}</div>
+                <div className="border-t border-slate-200 pt-2 text-court-muted">
+                  {selected.appeal.summary}
+                </div>
                 {selected.appeal.prepNotes && (
-                  <div className="mt-2 border-t border-court-line pt-2 text-xs">
-                    <strong>Подготовка:</strong> {selected.appeal.prepNotes}
+                  <div className="border-t border-slate-200 pt-2 text-xs">
+                    <strong>Материалы подготовки:</strong>{" "}
+                    {selected.appeal.prepNotes}
                   </div>
                 )}
                 <Link
                   href={`/admin/appeals/${selected.appeal.id}`}
-                  className="mt-2 inline-block text-xs font-semibold text-court-blue"
+                  className="inline-block text-xs font-semibold text-court-blue"
                 >
                   Открыть полную карточку →
                 </Link>
@@ -190,34 +214,55 @@ export default function ReceptionPage() {
 
               <form onSubmit={onSubmit} className="space-y-4">
                 <div>
-                  <label className="label">Суть проблемы / предложения гражданина</label>
+                  <label className="label">
+                    ФИО заявителя (как в протоколе)
+                  </label>
+                  <input
+                    className="input bg-slate-50"
+                    value={selected.appeal.fullName}
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <label className="label">
+                    Изложение заявителя (суть проблемы / предложения)
+                  </label>
                   <textarea
                     className="input min-h-[80px]"
                     value={citizenStatement}
                     onChange={(e) => setCitizenStatement(e.target.value)}
                     required
+                    placeholder="Краткое изложение по существу, без ссылок на конкретные дела…"
                   />
                 </div>
                 <div>
-                  <label className="label">Разъяснение порядка дальнейших действий</label>
+                  <label className="label">
+                    Разъяснение руководства (права и порядок дальнейших действий)
+                  </label>
                   <textarea
                     className="input min-h-[80px]"
                     value={leadershipExplanation}
                     onChange={(e) => setLeadershipExplanation(e.target.value)}
                     required
+                    placeholder="Разъяснение в соответствии с законодательством КР…"
                   />
                 </div>
                 <div>
-                  <label className="label">Поручение (в рамках компетенции)</label>
+                  <label className="label">
+                    Поручение (в пределах компетенции общественной приёмной)
+                  </label>
                   <textarea
                     className="input min-h-[70px]"
                     value={assignmentText}
                     onChange={(e) => setAssignmentText(e.target.value)}
                     required
+                    placeholder="Содержание поручения ответственному…"
                   />
                 </div>
                 <div>
-                  <label className="label">Ответственный по обращению</label>
+                  <label className="label">
+                    Ответственный по обращению
+                  </label>
                   <select
                     className="input"
                     value={responsibleUserId}
@@ -232,17 +277,29 @@ export default function ReceptionPage() {
                 </div>
                 <div>
                   <label className="label">
-                    Участники (профильные специалисты)
+                    Привлечённые профильные специалисты (при необходимости)
                   </label>
                   <input
                     className="input"
                     value={specialistsInvolved}
                     onChange={(e) => setSpecialistsInvolved(e.target.value)}
-                    placeholder="При необходимости"
+                    placeholder="ФИО, подразделение"
+                  />
+                </div>
+                <div>
+                  <label className="label">Дата и время приёма</label>
+                  <input
+                    className="input bg-slate-50 font-mono"
+                    readOnly
+                    value={
+                      selected.apt
+                        ? `${selected.apt.date.split("-").reverse().join(".")} · ${selected.apt.slotStart}–${selected.apt.slotEnd}`
+                        : "—"
+                    }
                   />
                 </div>
                 <button type="submit" className="btn-primary" disabled={!canConduct}>
-                  Зафиксировать приём и передать на контроль
+                  Зафиксировать приём и передать на контроль исполнения
                 </button>
               </form>
             </>

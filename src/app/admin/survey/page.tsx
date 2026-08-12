@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -26,7 +26,12 @@ export default function AdminSurveyPage() {
     reorderSurveyQuestion,
     updateSurveyMeta,
     resetSurveyQuestions,
+    setAdminModule,
   } = useStore();
+
+  useEffect(() => {
+    setAdminModule("survey");
+  }, [setAdminModule]);
 
   const questions = useMemo(
     () =>
@@ -122,20 +127,34 @@ export default function AdminSurveyPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-court-navy sm:text-2xl">
-            Опросник судов
+            Вопросы анкеты (управление)
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-court-muted">
-            Демо: вопросы редактируются здесь и сразу видны в публичной
-            анкете. Позже — интеграция с opros.sot.kg.
+            Редактирование формулировок вопросов. Публичное заполнение анкеты
+            и учёт ответов — в действующей системе{" "}
+            <a
+              href="https://opros.sot.kg"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-court-blue hover:underline"
+            >
+              opros.sot.kg
+            </a>
+            . Здесь — только CMS вопросов для интеграции.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/survey" target="_blank" className="btn-outline !text-sm">
+          <a
+            href="https://opros.sot.kg"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-outline !text-sm"
+          >
             <Eye className="h-4 w-4" />
-            Анкета
-          </Link>
+            opros.sot.kg
+          </a>
           <Link href="/admin/survey/results" className="btn-outline !text-sm">
-            Результаты
+            Сводка (демо)
           </Link>
           <button type="button" className="btn-primary !text-sm" onClick={newQuestion}>
             <Plus className="h-4 w-4" />

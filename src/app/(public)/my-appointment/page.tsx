@@ -249,20 +249,27 @@ export default function MyAppointmentPage() {
             </div>
           </Link>
 
-          {apt && appeal && ["answered", "closed", "reception_done", "in_control"].includes(appeal.stage) && (
+          {apt && (
             <Link
               href={`/feedback/${apt.code}`}
-              className="card flex items-center gap-3 p-4 transition hover:border-court-blue"
+              className="card flex items-center gap-3 border-court-gold/40 p-4 transition hover:border-court-gold"
             >
               <div className="flex h-10 w-10 items-center justify-center bg-court-goldPale text-court-ink">
                 <Star className="h-5 w-5" />
               </div>
               <div>
                 <div className="text-sm font-semibold text-court-ink">
-                  {t.nav.feedback}
+                  {isKy ? "Сервисти баалоо" : "Оценить сервис"}
                 </div>
                 <div className="text-xs text-court-muted">
-                  {isKy ? "Кабыл алууну баалоо" : "Оценить приём"}
+                  {isKy
+                    ? "Онлайн-жазылуу жана кабыл алуу"
+                    : "Онлайн-запись и работа приёмной"}
+                  {appeal?.feedback
+                    ? isKy
+                      ? " · өзгөртүү"
+                      : " · изменить"
+                    : ""}
                 </div>
               </div>
             </Link>

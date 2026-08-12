@@ -1,10 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useStore } from "@/lib/store";
-import { generateDaySlots, minutesToTime, timeToMinutes } from "@/lib/slots";
+import {
+  formatDateList,
+  generateDaySlots,
+  generateTimeOptions,
+  minutesToTime,
+  parseDateList,
+  timeToMinutes,
+} from "@/lib/slots";
 import { RotateCcw, Save } from "lucide-react";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { Collapsible } from "@/components/ui/Collapsible";
 import { useI18n } from "@/lib/i18n";
 
 const WEEKDAYS = [
@@ -17,9 +25,13 @@ const WEEKDAYS = [
   { v: 0, l: "Воскресенье" },
 ];
 
+/** Время 24-часового формата (КР) — select, без AM/PM */
+const TIME_OPTIONS = generateTimeOptions(6 * 60, 22 * 60, 5);
+
 export default function SettingsPage() {
   const { state, currentUser, updateCalendar, resetDemo } = useStore();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isKy = lang === "ky";
   const cal = state.calendar;
   const [weekdays, setWeekdays] = useState(cal.receptionWeekdays);
   const [start, setStart] = useState(minutesToTime(cal.dayStartMinutes));
@@ -27,8 +39,8 @@ export default function SettingsPage() {
   const [slot, setSlot] = useState(cal.slotDurationMinutes);
   const [brk, setBrk] = useState(cal.breakMinutes);
   const [horizon, setHorizon] = useState(cal.bookingHorizonDays);
-  const [closed, setClosed] = useState(cal.closedDates.join(", "));
-  const [extra, setExtra] = useState(cal.extraOpenDates.join(", "));
+  const [closed, setClosed] = useState(formatDateList(cal.closedDates));
+  const [extra, setExtra] = useState(formatDateList(cal.extraOpenDates));
   const [rules, setRules] = useState(cal.rulesText);
   const [msg, setMsg] = useState("");
 
@@ -39,33 +51,31 @@ export default function SettingsPage() {
     setSlot(cal.slotDurationMinutes);
     setBrk(cal.breakMinutes);
     setHorizon(cal.bookingHorizonDays);
-    setClosed(cal.closedDates.join(", "));
-    setExtra(cal.extraOpenDates.join(", "));
+    setClosed(formatDateList(cal.closedDates));
+    setExtra(formatDateList(cal.extraOpenDates));
     setRules(cal.rulesText);
   }, [cal]);
 
   const canEdit =
-    currentUser && ["admin", "reception", "leadership"].includes(currentUser.role);
+    currentUser &&
+    ["admin", "reception", "leadership"].includes(currentUser.role);
 
-  const preview = generateDaySlots({
-    ...cal,
-    dayStartMinutes: timeToMinutes(start),
-    dayEndMinutes: timeToMinutes(end),
-    slotDurationMinutes: slot,
-    breakMinutes: brk,
-  });
+  const preview = useMemo(
+    () =>
+      generateDaySlots({
+        ...cal,
+        dayStartMinutes: timeToMinutes(start),
+        dayEndMinutes: timeToMinutes(end),
+        slotDurationMinutes: slot,
+        breakMinutes: brk,
+      }),
+    [cal, start, end, slot, brk]
+  );
 
   function toggleDay(v: number) {
     setWeekdays((prev) =>
       prev.includes(v) ? prev.filter((d) => d !== v) : [...prev, v].sort()
     );
-  }
-
-  function parseDates(s: string): string[] {
-    return s
-      .split(/[,;\s]+/)
-      .map((x) => x.trim())
-      .filter((x) => /^\d{4}-\d{2}-\d{2}$/.test(x));
   }
 
   function onSave(e: React.FormEvent) {
@@ -78,15 +88,19 @@ export default function SettingsPage() {
       slotDurationMinutes: slot,
       breakMinutes: brk,
       bookingHorizonDays: horizon,
-      closedDates: parseDates(closed),
-      extraOpenDates: parseDates(extra),
+      closedDates: parseDateList(closed),
+      extraOpenDates: parseDateList(extra),
       rulesText: rules,
     });
-    setMsg("Настройки календаря сохранены.");
+    setMsg(
+      isKy
+        ? "График сакталды."
+        : "Параметры графика приёма сохранены."
+    );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="page-enter space-y-5">
       <Breadcrumbs
         items={[
           { label: t.crumbs.admin, href: "/admin" },
@@ -94,25 +108,31 @@ export default function SettingsPage() {
         ]}
       />
       <div>
-        <h1 className="section-title">{t.admin.settings}</h1>
-        <p className="mt-1 text-base text-court-muted">
-          Дни приёма, интервалы, закрытые даты, текст правил.
+        <h1 className="section-title">
+          {isKy ? "Кабыл алуу графиги" : "График приёма"}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {isKy
+            ? "Күндөр, убакыт (24 саат), мөөнөттөр. Дата: кк.аа.жжжж"
+            : "Дни приёма, время в 24-часовом формате, интервалы. Даты указываются как дд.мм.гггг."}
         </p>
       </div>
 
       {msg && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
           {msg}
         </div>
       )}
 
-      <form onSubmit={onSave} className="grid gap-6 lg:grid-cols-2">
-        <div className="card space-y-4 p-5">
-          <h2 className="font-display text-xl font-semibold text-court-navy">
-            Дни и время приёма
+      <form onSubmit={onSave} className="grid gap-5 lg:grid-cols-2">
+        <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="text-base font-semibold text-slate-900">
+            {isKy ? "Күндөр жана убакыт" : "Дни и время приёма"}
           </h2>
           <div>
-            <div className="label">Дни недели</div>
+            <div className="label">
+              {isKy ? "Жума күндөрү" : "Дни недели"}
+            </div>
             <div className="flex flex-wrap gap-2">
               {WEEKDAYS.map((d) => (
                 <button
@@ -120,10 +140,10 @@ export default function SettingsPage() {
                   type="button"
                   disabled={!canEdit}
                   onClick={() => toggleDay(d.v)}
-                  className={`rounded-lg border px-3 py-1.5 text-sm ${
+                  className={`rounded-lg border px-3 py-1.5 text-sm transition ${
                     weekdays.includes(d.v)
                       ? "border-court-navy bg-court-navy text-white"
-                      : "border-court-line bg-white text-court-muted"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                   }`}
                 >
                   {d.l}
@@ -131,29 +151,46 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Начало</label>
-              <input
-                type="time"
-                className="input"
+              <label className="label">
+                {isKy ? "Башталышы (24ч)" : "Начало (24ч)"}
+              </label>
+              <select
+                className="input font-mono"
                 value={start}
                 onChange={(e) => setStart(e.target.value)}
                 disabled={!canEdit}
-              />
+              >
+                {TIME_OPTIONS.map((tm) => (
+                  <option key={tm} value={tm}>
+                    {tm}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
-              <label className="label">Конец</label>
-              <input
-                type="time"
-                className="input"
+              <label className="label">
+                {isKy ? "Аякталышы (24ч)" : "Окончание (24ч)"}
+              </label>
+              <select
+                className="input font-mono"
                 value={end}
                 onChange={(e) => setEnd(e.target.value)}
                 disabled={!canEdit}
-              />
+              >
+                {TIME_OPTIONS.map((tm) => (
+                  <option key={tm} value={tm}>
+                    {tm}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
-              <label className="label">Длительность слота (мин)</label>
+              <label className="label">
+                {isKy ? "Слот (мүн)" : "Длительность слота (мин)"}
+              </label>
               <input
                 type="number"
                 min={10}
@@ -165,7 +202,9 @@ export default function SettingsPage() {
               />
             </div>
             <div>
-              <label className="label">Пауза между слотами (мин)</label>
+              <label className="label">
+                {isKy ? "Тыныгуу (мүн)" : "Пауза между слотами (мин)"}
+              </label>
               <input
                 type="number"
                 min={0}
@@ -177,8 +216,13 @@ export default function SettingsPage() {
               />
             </div>
           </div>
+
           <div>
-            <label className="label">Горизонт записи (дней вперёд)</label>
+            <label className="label">
+              {isKy
+                ? "Жазылуу горизонту (күн)"
+                : "Горизонт записи (дней вперёд)"}
+            </label>
             <input
               type="number"
               min={7}
@@ -189,98 +233,129 @@ export default function SettingsPage() {
               disabled={!canEdit}
             />
           </div>
+
           <div>
             <label className="label">
-              Закрытые даты (YYYY-MM-DD через запятую)
+              {isKy
+                ? "Жабык күндөр (кк.аа.жжжж, үтүр менен)"
+                : "Закрытые даты (дд.мм.гггг через запятую)"}
             </label>
             <input
-              className="input font-mono text-xs"
+              className="input font-mono text-sm"
               value={closed}
               onChange={(e) => setClosed(e.target.value)}
               disabled={!canEdit}
-              placeholder="2026-05-01, 2026-08-31"
+              placeholder="01.05.2026, 31.08.2026"
+              lang="ru"
             />
+            <p className="mt-1 text-[11px] text-slate-400">
+              {isKy
+                ? "Формат: 01.05.2026 — ISO (2026-05-01) эмес."
+                : "Формат КР: 01.05.2026. Не используйте гггг-мм-дд."}
+            </p>
           </div>
           <div>
             <label className="label">
-              Доп. открытые даты вне графика
+              {isKy
+                ? "Кошумча ачык күндөр (кк.аа.жжжж)"
+                : "Доп. открытые даты (дд.мм.гггг)"}
             </label>
             <input
-              className="input font-mono text-xs"
+              className="input font-mono text-sm"
               value={extra}
               onChange={(e) => setExtra(e.target.value)}
               disabled={!canEdit}
+              placeholder="15.06.2026"
+              lang="ru"
             />
           </div>
         </div>
 
-        <div className="space-y-6">
-          <div className="card p-5">
-            <h2 className="font-display text-xl font-semibold text-court-navy">
-              Предпросмотр слотов
+        <div className="space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h2 className="text-base font-semibold text-slate-900">
+              {isKy ? "Слоттордун көрүнүшү" : "Предпросмотр интервалов"}
             </h2>
-            <p className="mt-1 text-xs text-court-muted">
-              По схеме из рукописи: 08:00–08:20, 08:25–08:45…
+            <p className="mt-1 text-xs text-slate-500">
+              {isKy
+                ? "Мисал: 08:00–08:20, 08:25–08:45 (24 саат)"
+                : "Пример: 08:00–08:20, 08:25–08:45 (формат 24 часа)"}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {preview.map((s) => (
                 <span
                   key={s.start}
-                  className="rounded-lg border border-court-line bg-court-mist px-2.5 py-1 font-mono text-xs"
+                  className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 font-mono text-xs tabular-nums text-slate-800"
                 >
                   {s.label}
                 </span>
               ))}
               {preview.length === 0 && (
-                <span className="text-sm text-court-muted">
-                  Некорректное окно времени
+                <span className="text-sm text-slate-400">
+                  {isKy
+                    ? "Убакыт терезеси туура эмес"
+                    : "Некорректное окно времени"}
                 </span>
               )}
             </div>
           </div>
 
-          <div className="card p-5">
-            <h2 className="mb-3 font-display text-xl font-semibold text-court-navy">
-              Текст правил (публичный)
-            </h2>
+          <Collapsible
+            title={
+              isKy
+                ? "Кошумча текст (график)"
+                : "Дополнительный текст к графику"
+            }
+            subtitle={
+              isKy
+                ? "Негизги эрежелер — «Контент сервиса»"
+                : "Основные правила — в разделе «Контент сервиса»"
+            }
+            defaultOpen={false}
+          >
             <textarea
-              className="input min-h-[220px] font-sans text-sm"
+              className="input min-h-[160px] font-sans text-sm"
               value={rules}
               onChange={(e) => setRules(e.target.value)}
               disabled={!canEdit}
             />
-          </div>
-        </div>
+          </Collapsible>
 
-        <div className="flex flex-wrap gap-3 lg:col-span-2">
-          <button type="submit" className="btn-primary" disabled={!canEdit}>
-            <Save className="h-4 w-4" />
-            Сохранить настройки
-          </button>
-          {currentUser?.role === "admin" && (
+          <div className="flex flex-wrap gap-2">
             <button
-              type="button"
-              className="btn-outline"
-              onClick={() => {
-                if (
-                  confirm(
-                    "Сбросить все демо-данные и настройки к исходному состоянию?"
-                  )
-                ) {
-                  resetDemo();
-                  setMsg("Демо-данные восстановлены.");
-                }
-              }}
+              type="submit"
+              className="btn-primary"
+              disabled={!canEdit}
             >
-              <RotateCcw className="h-4 w-4" />
-              Сбросить демо
+              <Save className="h-4 w-4" />
+              {isKy ? "Сактоо" : "Сохранить"}
             </button>
-          )}
-          {!canEdit && (
-            <span className="self-center text-sm text-court-muted">
-              Редактирование доступно администратору, приёмной и руководству.
-            </span>
-          )}
+            {currentUser?.role === "admin" && (
+              <button
+                type="button"
+                className="btn-outline"
+                onClick={() => {
+                  if (
+                    confirm(
+                      isKy
+                        ? "Демо-маалыматты баштапкы абалга кайтаруу?"
+                        : "Сбросить демонстрационные данные?"
+                    )
+                  ) {
+                    resetDemo();
+                    setMsg(
+                      isKy
+                        ? "Демо калыбына келтирилди."
+                        : "Демонстрационные данные восстановлены."
+                    );
+                  }
+                }}
+              >
+                <RotateCcw className="h-4 w-4" />
+                {isKy ? "Демо сброс" : "Сброс демо"}
+              </button>
+            )}
+          </div>
         </div>
       </form>
     </div>

@@ -4,15 +4,27 @@ import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
 
 export function CitizenHubNav() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isKy = lang === "ky";
 
   const items = [
     { href: "/book", label: t.hub.book, desc: t.hub.bookDesc },
     { href: "/my-appointment", label: t.hub.my, desc: t.hub.myDesc },
-    { href: "/feedback", label: t.hub.feedback, desc: t.hub.feedbackDesc },
-    { href: "/survey", label: "Опросник судов", desc: "Анкета оценки работы суда (демо)" },
-    { href: "/process", label: t.hub.process, desc: t.hub.processDesc },
+    {
+      href: "/feedback",
+      label: t.hub.feedback,
+      desc: isKy
+        ? "Онлайн-жазылуу жана кабыл алуу сапаты"
+        : "Качество онлайн-записи и приёма",
+    },
     { href: "/rules", label: t.hub.rules, desc: t.hub.rulesDesc },
+    {
+      href: "/process",
+      label: isKy ? "Иштөө тартиби (демо)" : "Порядок работы (демо)",
+      desc: isKy
+        ? "Этаптар — демо-түшүндүрмө"
+        : "Этапы рассмотрения — справочный демо-раздел",
+    },
   ];
 
   return (

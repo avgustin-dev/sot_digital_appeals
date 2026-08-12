@@ -9,7 +9,7 @@ export default function PublicLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <PublicHeader />
-      <div className="flex-1">{children}</div>
+      <div className="page-enter flex-1">{children}</div>
       <PublicFooter />
     </div>
   );

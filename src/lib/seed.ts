@@ -33,7 +33,7 @@ export const SEED_STAFF: StaffUser[] = [
     fullName: "Абдылдаев Нурлан Токтосунович",
     role: "admin",
     position: "Администратор платформы",
-    department: "ИТ-служба ВС КР",
+    department: "ИТ-служба Верховного суда Кыргызской Республики",
   },
   {
     id: "u-reception",

@@ -1,12 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { PageLoader } from "@/components/ui/PageLoader";
+import { HBarChart } from "@/components/ui/SimpleCharts";
+import { Collapsible } from "@/components/ui/Collapsible";
 
+/**
+ * Только статистика (без очистки / правок) — основное на opros.sot.kg.
+ */
 export default function SurveyResultsPage() {
-  const { ready, state, clearSurveyResponses } = useStore();
+  const { ready, state, setAdminModule } = useStore();
+
+  useEffect(() => {
+    setAdminModule("survey");
+  }, [setAdminModule]);
 
   const questions = useMemo(
     () =>
@@ -18,6 +27,17 @@ export default function SurveyResultsPage() {
 
   const responses = state.surveyResponses || [];
 
+  const byCourt = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of responses) {
+      const name = r.courtName || "—";
+      m.set(name, (m.get(name) || 0) + 1);
+    }
+    return Array.from(m.entries())
+      .map(([label, value]) => ({ key: label, label, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [responses]);
+
   const stats = useMemo(() => {
     return questions.map((q) => {
       if (q.type === "text") {
@@ -27,7 +47,7 @@ export default function SurveyResultsPage() {
         return {
           question: q,
           kind: "text" as const,
-          texts,
+          texts: texts.slice(0, 12),
           total: texts.length,
         };
       }
@@ -53,52 +73,47 @@ export default function SurveyResultsPage() {
   if (!ready) return <PageLoader label="Загрузка…" />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-court-navy sm:text-2xl">
+          <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">
             Результаты опросника
           </h1>
-          <p className="mt-1 text-sm text-court-muted">
-            Демо-статистика по сохранённым ответам (local). Всего анкет:{" "}
-            <strong className="text-court-navy">{responses.length}</strong>
+          <p className="mt-1 max-w-xl text-sm text-slate-500">
+            Только статистика для просмотра. Полный учёт и выгрузки — в
+            действующем opros.sot.kg. Здесь: сводка по ответам демо-хранилища.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/survey" className="btn-outline !text-sm">
             ← Вопросы
           </Link>
-          <Link href="/survey" target="_blank" className="btn-outline !text-sm">
-            Заполнить анкету
-          </Link>
-          <button
-            type="button"
-            className="btn-danger !text-sm"
-            onClick={() => {
-              if (confirm("Очистить все ответы (демо)?")) clearSurveyResponses();
-            }}
+          <Link
+            href="/survey"
+            target="_blank"
+            className="btn-outline !text-sm"
           >
-            Очистить ответы
-          </button>
+            Анкета (суды)
+          </Link>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="card p-4">
-          <div className="text-xs uppercase text-court-muted">Анкет</div>
-          <div className="text-2xl font-bold text-court-navy">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs uppercase text-slate-500">Анкет</div>
+          <div className="text-2xl font-bold text-slate-900">
             {responses.length}
           </div>
         </div>
-        <div className="card p-4">
-          <div className="text-xs uppercase text-court-muted">Вопросов</div>
-          <div className="text-2xl font-bold text-court-navy">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs uppercase text-slate-500">Вопросов</div>
+          <div className="text-2xl font-bold text-slate-900">
             {questions.length}
           </div>
         </div>
-        <div className="card p-4">
-          <div className="text-xs uppercase text-court-muted">Последняя</div>
-          <div className="text-sm font-semibold text-court-navy">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="text-xs uppercase text-slate-500">Последняя</div>
+          <div className="text-sm font-semibold text-slate-900">
             {responses[0]
               ? new Date(responses[0].at).toLocaleString("ru-RU")
               : "—"}
@@ -106,54 +121,46 @@ export default function SurveyResultsPage() {
         </div>
       </div>
 
-      <div className="space-y-4">
+      {byCourt.length > 0 && (
+        <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-base font-semibold text-slate-900">
+            По судам
+          </h2>
+          <HBarChart items={byCourt} />
+        </section>
+      )}
+
+      <div className="space-y-3">
         {stats.map((s) => (
-          <div key={s.question.id} className="card p-4 sm:p-5">
-            <div className="text-xs font-semibold text-court-muted">
-              Вопрос {s.question.order}
-            </div>
-            <h2 className="mt-1 text-base font-semibold text-court-ink">
-              {s.question.textRu}
-            </h2>
-
+          <Collapsible
+            key={s.question.id}
+            title={`Вопрос ${s.question.order}`}
+            subtitle={s.question.textRu}
+            defaultOpen={s.question.order <= 3}
+          >
             {s.kind === "single" && (
-              <ul className="mt-4 space-y-2">
-                {s.question.options.map((o) => {
-                  const n = s.counts[o.id] || 0;
-                  const pct =
-                    s.answered > 0
-                      ? Math.round((n / s.answered) * 100)
-                      : 0;
-                  return (
-                    <li key={o.id}>
-                      <div className="mb-0.5 flex justify-between gap-2 text-sm">
-                        <span className="text-court-ink">{o.textRu}</span>
-                        <span className="shrink-0 font-mono text-court-muted">
-                          {n} · {pct}%
-                        </span>
-                      </div>
-                      <div className="h-2 overflow-hidden bg-court-mist">
-                        <div
-                          className="h-full bg-court-navy transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+              <HBarChart
+                items={s.question.options.map((o) => ({
+                  key: o.id,
+                  label: o.textRu,
+                  value: s.counts[o.id] || 0,
+                }))}
+              />
             )}
-
             {s.kind === "text" && (
-              <div className="mt-3">
+              <div>
+                <p className="mb-2 text-xs text-slate-500">
+                  Текстовых ответов: {s.total}
+                  {s.total > 12 ? " (показаны первые 12)" : ""}
+                </p>
                 {s.texts.length === 0 ? (
-                  <p className="text-sm text-court-muted">Нет текстовых ответов.</p>
+                  <p className="text-sm text-slate-400">Нет ответов.</p>
                 ) : (
                   <ul className="space-y-2">
                     {s.texts.map((t, i) => (
                       <li
                         key={i}
-                        className="border border-court-line bg-court-mist px-3 py-2 text-sm text-court-ink"
+                        className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-700"
                       >
                         {t}
                       </li>
@@ -162,7 +169,7 @@ export default function SurveyResultsPage() {
                 )}
               </div>
             )}
-          </div>
+          </Collapsible>
         ))}
       </div>
     </div>

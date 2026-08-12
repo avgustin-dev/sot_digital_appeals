@@ -346,6 +346,12 @@ export const DEFAULT_REFUSAL: RefusalMessage = refuse(
   ]
 );
 
+export function cloneEligibilityTree(
+  nodes: EligibilityNode[] = ELIGIBILITY_TREE
+): EligibilityNode[] {
+  return JSON.parse(JSON.stringify(nodes)) as EligibilityNode[];
+}
+
 export function findNode(
   id: string,
   nodes: EligibilityNode[] = ELIGIBILITY_TREE
@@ -361,9 +367,12 @@ export function findNode(
 }
 
 /** Узлы по цепочке выбранных id (от корня) */
-export function resolvePath(ids: string[]): EligibilityNode[] {
+export function resolvePath(
+  ids: string[],
+  tree: EligibilityNode[] = ELIGIBILITY_TREE
+): EligibilityNode[] {
   const out: EligibilityNode[] = [];
-  let level: EligibilityNode[] | undefined = ELIGIBILITY_TREE;
+  let level: EligibilityNode[] | undefined = tree;
   for (const id of ids) {
     if (!level) break;
     const node: EligibilityNode | undefined = level.find((n) => n.id === id);
@@ -374,24 +383,95 @@ export function resolvePath(ids: string[]): EligibilityNode[] {
   return out;
 }
 
-export function getLeaf(pathIds: string[]): EligibilityNode | undefined {
+export function getLeaf(
+  pathIds: string[],
+  tree: EligibilityNode[] = ELIGIBILITY_TREE
+): EligibilityNode | undefined {
   if (pathIds.length === 0) return undefined;
-  const path = resolvePath(pathIds);
+  const path = resolvePath(pathIds, tree);
   if (path.length !== pathIds.length) return undefined;
   const last = path[path.length - 1];
   if (last.children?.length) return undefined;
   return last;
 }
 
-export function isPathAllowed(pathIds: string[]): boolean {
-  const leaf = getLeaf(pathIds);
+export function isPathAllowed(
+  pathIds: string[],
+  tree: EligibilityNode[] = ELIGIBILITY_TREE
+): boolean {
+  const leaf = getLeaf(pathIds, tree);
   return Boolean(leaf?.allowed);
 }
 
-export function getPathRefusal(pathIds: string[]): RefusalMessage | null {
-  const leaf = getLeaf(pathIds);
+export function getPathRefusal(
+  pathIds: string[],
+  tree: EligibilityNode[] = ELIGIBILITY_TREE
+): RefusalMessage | null {
+  const leaf = getLeaf(pathIds, tree);
   if (!leaf || leaf.allowed) return null;
   return leaf.refusal ?? DEFAULT_REFUSAL;
+}
+
+/** Обновить узел в дереве по id (иммутабельно) */
+export function updateEligibilityNode(
+  tree: EligibilityNode[],
+  id: string,
+  patch: Partial<EligibilityNode>
+): EligibilityNode[] {
+  return tree.map((n) => {
+    if (n.id === id) {
+      return { ...n, ...patch, children: n.children };
+    }
+    if (n.children?.length) {
+      return {
+        ...n,
+        children: updateEligibilityNode(n.children, id, patch),
+      };
+    }
+    return n;
+  });
+}
+
+export function deleteEligibilityNode(
+  tree: EligibilityNode[],
+  id: string
+): EligibilityNode[] {
+  return tree
+    .filter((n) => n.id !== id)
+    .map((n) =>
+      n.children
+        ? { ...n, children: deleteEligibilityNode(n.children, id) }
+        : n
+    );
+}
+
+export function addEligibilityChild(
+  tree: EligibilityNode[],
+  parentId: string | null,
+  node: EligibilityNode
+): EligibilityNode[] {
+  if (!parentId) return [...tree, node];
+  return tree.map((n) => {
+    if (n.id === parentId) {
+      return {
+        ...n,
+        children: [...(n.children ?? []), node],
+        // parent with children is not a leaf
+        allowed: undefined,
+        category: undefined,
+        topicRu: undefined,
+        topicKy: undefined,
+        refusal: undefined,
+      };
+    }
+    if (n.children?.length) {
+      return {
+        ...n,
+        children: addEligibilityChild(n.children, parentId, node),
+      };
+    }
+    return n;
+  });
 }
 
 /** Правила на первом экране (как блок «Правила записи» у КЗ) */

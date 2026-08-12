@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { StageBadge } from "@/components/ui/Badge";
@@ -15,6 +16,7 @@ import { useI18n } from "@/lib/i18n";
 export default function AppealsListPage() {
   const { state } = useStore();
   const { t } = useI18n();
+  const router = useRouter();
   const [q, setQ] = useState("");
   const [stage, setStage] = useState<AppealStage | "all">("all");
 
@@ -92,28 +94,30 @@ export default function AppealsListPage() {
           description="Измените фильтр или дождитесь новых записей граждан."
         />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-court-line bg-white shadow-card">
+        <div className="page-enter overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-court-mist text-xs uppercase tracking-wider text-court-muted">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 font-semibold">Код</th>
-                  <th className="px-4 py-3 font-semibold">Гражданин</th>
-                  <th className="px-4 py-3 font-semibold">Тема</th>
-                  <th className="px-4 py-3 font-semibold">Категория</th>
-                  <th className="px-4 py-3 font-semibold">Этап</th>
+                  <th>Рег. код</th>
+                  <th>Заявитель</th>
+                  <th>Тема обращения</th>
+                  <th>Категория</th>
+                  <th>Этап</th>
                 </tr>
               </thead>
               <tbody>
                 {list.map((a) => (
                   <tr
                     key={a.id}
-                    className="border-t border-court-line hover:bg-court-mist/50"
+                    className="cursor-pointer border-t border-court-line hover:bg-court-mist/50"
+                    onClick={() => router.push(`/admin/appeals/${a.id}`)}
                   >
                     <td className="px-4 py-3">
                       <Link
                         href={`/admin/appeals/${a.id}`}
                         className="font-mono font-semibold text-court-blue hover:underline"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {a.code}
                       </Link>

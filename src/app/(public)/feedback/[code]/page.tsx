@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FEEDBACK_QUESTIONS } from "@/lib/constants";
@@ -30,6 +30,18 @@ export default function FeedbackByCodePage() {
   const [comment, setComment] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    if (!appeal?.feedback) return;
+    setScores({
+      respectful: appeal.feedback.respectful,
+      clearNextSteps: appeal.feedback.clearNextSteps,
+      convenient: appeal.feedback.convenient,
+      deadlinesMet: appeal.feedback.deadlinesMet,
+    });
+    setComment(appeal.feedback.comment || "");
+  }, [appeal?.id, appeal?.feedback?.submittedAt]);
 
   if (!ready) return <PageLoader label={t.common.loading} />;
 
@@ -40,15 +52,30 @@ export default function FeedbackByCodePage() {
           <h1 className="text-lg font-semibold text-court-ink">
             {isKy ? "Кайрылуу табылган жок" : "Обращение не найдено"}
           </h1>
-          <Link href="/feedback" className="btn-primary mt-4 inline-flex">
-            {isKy ? "Артка" : "К вводу кода"}
+          <p className="mt-2 text-sm text-court-muted">
+            {isKy
+              ? "Кодду текшериңиз же «Менин жазылууум» аркылуу кириңиз."
+              : "Проверьте код или откройте раздел «Моя запись»."}
+          </p>
+          <Link href="/my-appointment" className="btn-primary mt-4 inline-flex">
+            {t.nav.myAppointment}
           </Link>
         </div>
       </div>
     );
   }
 
-  if (appeal.feedback || done) {
+  const stageOk = [
+    "answered",
+    "closed",
+    "in_control",
+    "reception_done",
+  ].includes(appeal.stage);
+
+  /** Оценка онлайн-записи доступна всегда при найденной записи; полный цикл — после приёма */
+  const bookingOnly = !stageOk;
+
+  if ((appeal.feedback || done) && !editing) {
     return (
       <div className="mx-auto max-w-2xl px-4 py-10">
         <div className="card p-6 text-center">
@@ -56,11 +83,31 @@ export default function FeedbackByCodePage() {
             {t.feedback.thanks}
           </h1>
           <p className="mt-2 text-sm text-court-muted">
-            {appeal.feedback ? t.feedback.already : t.feedback.thanks}
+            {isKy
+              ? "Сиздин баалоо кабыл алынды. Керек болсо өзгөртө аласыз."
+              : "Ваша оценка принята. При необходимости Вы можете её изменить."}
           </p>
-          <Link href="/" className="btn-outline mt-4 inline-flex">
-            {t.book.toHome}
-          </Link>
+          {appeal.feedback && (
+            <p className="mt-2 text-xs text-slate-500">
+              {isKy ? "Жөнөтүлгөн" : "Направлено"}:{" "}
+              {new Date(appeal.feedback.submittedAt).toLocaleString("ru-RU")}
+            </p>
+          )}
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => {
+                setDone(false);
+                setEditing(true);
+              }}
+            >
+              {isKy ? "Баалоону өзгөртүү" : "Изменить оценку"}
+            </button>
+            <Link href="/" className="btn-outline">
+              {t.book.toHome}
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -90,6 +137,7 @@ export default function FeedbackByCodePage() {
       setError(res.error);
       return;
     }
+    setEditing(false);
     setDone(true);
   }
 
@@ -98,17 +146,28 @@ export default function FeedbackByCodePage() {
       <Breadcrumbs
         items={[
           { label: t.crumbs.home, href: "/" },
-          { label: t.crumbs.feedback, href: "/feedback" },
+          { label: t.crumbs.feedback },
           { label: code },
         ]}
       />
       <form onSubmit={onSubmit} className="card p-5 sm:p-6">
         <h1 className="text-xl font-semibold text-court-ink">
-          {t.feedback.title}
+          {editing
+            ? isKy
+              ? "Баалоону өзгөртүү"
+              : "Изменение оценки"
+            : t.feedback.title}
         </h1>
         <p className="mt-1 text-sm text-court-muted">
           {appeal.fullName} · {code}
         </p>
+        {bookingOnly && (
+          <p className="mt-2 rounded-lg border border-sky-100 bg-sky-50 px-3 py-2 text-xs text-sky-950">
+            {isKy
+              ? "Кабыл алуу азырынча өтө элек — сиз негизинен электрондук жазылуунун ыңгайлуулугун баалай аласыз."
+              : "Личный приём ещё не проведён: Вы можете оценить удобство электронной записи; после приёма — дополнить оценку."}
+          </p>
+        )}
 
         <div className="mt-6 space-y-5">
           {FEEDBACK_QUESTIONS.map((q) => (
@@ -154,9 +213,24 @@ export default function FeedbackByCodePage() {
           </div>
         )}
 
-        <button type="submit" className="btn-primary mt-5">
-          {t.feedback.submit}
-        </button>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button type="submit" className="btn-primary">
+            {editing
+              ? isKy
+                ? "Өзгөртүүлөрдү сактоо"
+                : "Сохранить изменения"
+              : t.feedback.submit}
+          </button>
+          {editing && (
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => setEditing(false)}
+            >
+              {isKy ? "Жокко" : "Отмена"}
+            </button>
+          )}
+        </div>
       </form>
     </div>
   );

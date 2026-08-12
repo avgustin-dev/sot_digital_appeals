@@ -14,6 +14,14 @@ import {
   SEED_SURVEY_QUESTIONS,
   SEED_SURVEY_RESPONSES,
 } from "./surveySeed";
+import { defaultServiceContent } from "./serviceContent";
+import {
+  addEligibilityChild,
+  cloneEligibilityTree,
+  deleteEligibilityNode,
+  updateEligibilityNode,
+  type EligibilityNode,
+} from "./eligibility";
 import type {
   AppealCard,
   AppealCategory,
@@ -29,12 +37,19 @@ import type {
   SurveyQuestion,
   SurveyResponse,
   SurveyAnswerValue,
+  ServiceContent,
+  AdminModule,
+  EligibilityTreeNode,
 } from "./types";
 import { generateCode, generateId, generatePin, matchCitizen } from "./utils";
 import { getAvailableSlotsForDate } from "./slots";
 
-export const STORAGE_KEY = "vs-kr-citizen-platform-v3";
-const STATE_VERSION = 3;
+export const STORAGE_KEY = "vs-kr-citizen-platform-v4";
+const STATE_VERSION = 4;
+
+function seedEligibilityTree(): EligibilityTreeNode[] {
+  return cloneEligibilityTree() as EligibilityTreeNode[];
+}
 
 export type BookInput = {
   fullName: string;
@@ -76,6 +91,50 @@ type PlatformStore = PlatformState & {
     date: string,
     slotStart: string,
     slotEnd: string
+  ) => ResultOk | ResultErr;
+  /** Сотрудник: отмена записи (без PIN) */
+  staffCancelAppointment: (
+    appointmentId: string,
+    user: StaffUser,
+    reason?: string
+  ) => ResultOk | ResultErr;
+  /** Сотрудник: вернуть отменённую запись */
+  staffRestoreAppointment: (
+    appointmentId: string,
+    user: StaffUser
+  ) => ResultOk | ResultErr;
+  /** Сотрудник: статус записи (confirmed / no_show / completed / …) */
+  staffSetAppointmentStatus: (
+    appointmentId: string,
+    status: Appointment["status"],
+    user: StaffUser,
+    note?: string
+  ) => ResultOk | ResultErr;
+  /** Сотрудник: перенос даты/времени */
+  staffRescheduleAppointment: (
+    appointmentId: string,
+    date: string,
+    slotStart: string,
+    slotEnd: string,
+    user: StaffUser
+  ) => ResultOk | ResultErr;
+  /** Сотрудник: правка полей записи + карточки */
+  staffUpdateCitizenData: (
+    appointmentId: string,
+    patch: Partial<
+      Pick<
+        Appointment,
+        "fullName" | "phone" | "email" | "topic" | "category" | "description"
+      >
+    >,
+    user: StaffUser
+  ) => ResultOk | ResultErr;
+  /** Сотрудник: смена этапа обращения */
+  staffSetAppealStage: (
+    appealId: string,
+    stage: AppealStage,
+    user: StaffUser,
+    note?: string
   ) => ResultOk | ResultErr;
   updateAppeal: (id: string, patch: Partial<AppealCard>) => void;
   startPrep: (appealId: string, user: StaffUser) => void;
@@ -122,6 +181,21 @@ type PlatformStore = PlatformState & {
     courtName?: string
   ) => ResultOk | ResultErr;
   clearSurveyResponses: () => void;
+  updateServiceContent: (patch: Partial<ServiceContent>) => void;
+  updateBookingRules: (patch: Partial<ServiceContent["rules"]>) => void;
+  setAdminModule: (m: AdminModule) => void;
+  resetServiceContent: () => void;
+  setEligibilityTree: (tree: EligibilityTreeNode[]) => void;
+  patchEligibilityNode: (
+    id: string,
+    patch: Partial<EligibilityNode>
+  ) => void;
+  removeEligibilityNode: (id: string) => void;
+  addEligibilityNode: (
+    parentId: string | null,
+    node: EligibilityTreeNode
+  ) => void;
+  resetEligibilityTree: () => void;
 };
 
 function initialData(): PlatformState {
@@ -138,6 +212,9 @@ function initialData(): PlatformState {
       options: q.options.map((o) => ({ ...o })),
     })),
     surveyResponses: [...SEED_SURVEY_RESPONSES],
+    serviceContent: defaultServiceContent(),
+    adminModule: "reception",
+    eligibilityTree: seedEligibilityTree(),
   };
 }
 
@@ -355,6 +432,382 @@ export const usePlatformStore = create<PlatformStore>()(
                       read: false,
                     },
                     ...ap.notifications,
+                  ],
+                }
+              : ap
+          ),
+        }));
+        return { ok: true };
+      },
+
+      staffCancelAppointment: (appointmentId, user, reason) => {
+        const apt = get().appointments.find((a) => a.id === appointmentId);
+        if (!apt) return { ok: false, error: "Запись не найдена" };
+        if (apt.status === "cancelled")
+          return { ok: false, error: "Уже отменена" };
+        const now = new Date().toISOString();
+        const detail =
+          reason?.trim() ||
+          `Отменил(а): ${user.fullName}`;
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === appointmentId
+              ? {
+                  ...a,
+                  status: "cancelled" as const,
+                  updatedAt: now,
+                  history: [
+                    ...a.history,
+                    {
+                      at: now,
+                      action: "Запись отменена сотрудником",
+                      detail,
+                    },
+                  ],
+                }
+              : a
+          ),
+          appeals: s.appeals.map((ap) =>
+            ap.appointmentId === appointmentId
+              ? {
+                  ...ap,
+                  stage: "cancelled" as AppealStage,
+                  updatedAt: now,
+                  controlLog: [
+                    {
+                      id: generateId("cl"),
+                      at: now,
+                      authorId: user.id,
+                      authorName: user.fullName,
+                      action: "Отмена записи",
+                      comment: detail,
+                    },
+                    ...ap.controlLog,
+                  ],
+                  notifications: [
+                    {
+                      id: generateId("n"),
+                      at: now,
+                      channel: "system" as const,
+                      title: "Запись отменена приёмной",
+                      body: `Запись ${ap.code} отменена сотрудником. ${detail}`,
+                      read: false,
+                    },
+                    ...ap.notifications,
+                  ],
+                }
+              : ap
+          ),
+        }));
+        return { ok: true };
+      },
+
+      staffRestoreAppointment: (appointmentId, user) => {
+        const apt = get().appointments.find((a) => a.id === appointmentId);
+        if (!apt) return { ok: false, error: "Запись не найдена" };
+        if (apt.status !== "cancelled" && apt.status !== "no_show") {
+          return {
+            ok: false,
+            error: "Вернуть можно только отменённую запись или неявку",
+          };
+        }
+        const now = new Date().toISOString();
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === appointmentId
+              ? {
+                  ...a,
+                  status: "confirmed" as const,
+                  updatedAt: now,
+                  history: [
+                    ...a.history,
+                    {
+                      at: now,
+                      action: "Запись восстановлена",
+                      detail: user.fullName,
+                    },
+                  ],
+                }
+              : a
+          ),
+          appeals: s.appeals.map((ap) =>
+            ap.appointmentId === appointmentId
+              ? {
+                  ...ap,
+                  stage: "registered" as AppealStage,
+                  updatedAt: now,
+                  controlLog: [
+                    {
+                      id: generateId("cl"),
+                      at: now,
+                      authorId: user.id,
+                      authorName: user.fullName,
+                      action: "Восстановление записи",
+                      comment: "Возврат в очередь / ожидание",
+                    },
+                    ...ap.controlLog,
+                  ],
+                  notifications: [
+                    {
+                      id: generateId("n"),
+                      at: now,
+                      channel: "system" as const,
+                      title: "Запись восстановлена",
+                      body: `Запись ${ap.code} снова активна. Дата: ${apt.date} ${apt.slotStart}.`,
+                      read: false,
+                    },
+                    ...ap.notifications,
+                  ],
+                }
+              : ap
+          ),
+        }));
+        return { ok: true };
+      },
+
+      staffSetAppointmentStatus: (appointmentId, status, user, note) => {
+        const apt = get().appointments.find((a) => a.id === appointmentId);
+        if (!apt) return { ok: false, error: "Запись не найдена" };
+        const now = new Date().toISOString();
+        const stageMap: Partial<Record<Appointment["status"], AppealStage>> = {
+          cancelled: "cancelled",
+          completed: "reception_done",
+          confirmed: "registered",
+          rescheduled: "registered",
+          no_show: "cancelled",
+        };
+        const nextStage = stageMap[status];
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === appointmentId
+              ? {
+                  ...a,
+                  status,
+                  updatedAt: now,
+                  history: [
+                    ...a.history,
+                    {
+                      at: now,
+                      action: `Статус записи: ${status}`,
+                      detail: note || user.fullName,
+                    },
+                  ],
+                }
+              : a
+          ),
+          appeals: s.appeals.map((ap) => {
+            if (ap.appointmentId !== appointmentId) return ap;
+            return {
+              ...ap,
+              stage: nextStage ?? ap.stage,
+              updatedAt: now,
+              controlLog: [
+                {
+                  id: generateId("cl"),
+                  at: now,
+                  authorId: user.id,
+                  authorName: user.fullName,
+                  action: `Статус записи → ${status}`,
+                  comment: note || "Смена статуса сотрудником",
+                },
+                ...ap.controlLog,
+              ],
+            };
+          }),
+        }));
+        return { ok: true };
+      },
+
+      staffRescheduleAppointment: (
+        appointmentId,
+        date,
+        slotStart,
+        slotEnd,
+        user
+      ) => {
+        const apt = get().appointments.find((a) => a.id === appointmentId);
+        if (!apt) return { ok: false, error: "Запись не найдена" };
+        if (apt.status === "cancelled")
+          return {
+            ok: false,
+            error: "Сначала восстановите отменённую запись",
+          };
+        if (apt.status === "completed")
+          return { ok: false, error: "Приём уже проведён" };
+
+        const free = getAvailableSlotsForDate(
+          date,
+          get().calendar,
+          get().appointments,
+          appointmentId
+        );
+        // staff may force time even if not in free list, but prefer free
+        const okSlot =
+          free.some((s) => s.start === slotStart) ||
+          Boolean(slotStart && slotEnd);
+        if (!okSlot || !date || !slotStart || !slotEnd) {
+          return { ok: false, error: "Укажите дату и время" };
+        }
+
+        const now = new Date().toISOString();
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === appointmentId
+              ? {
+                  ...a,
+                  date,
+                  slotStart,
+                  slotEnd,
+                  status: "rescheduled" as const,
+                  updatedAt: now,
+                  history: [
+                    ...a.history,
+                    {
+                      at: now,
+                      action: "Перенос сотрудником",
+                      detail: `${date} ${slotStart}–${slotEnd} · ${user.fullName}`,
+                    },
+                  ],
+                }
+              : a
+          ),
+          appeals: s.appeals.map((ap) =>
+            ap.appointmentId === appointmentId
+              ? {
+                  ...ap,
+                  updatedAt: now,
+                  notifications: [
+                    {
+                      id: generateId("n"),
+                      at: now,
+                      channel: "system" as const,
+                      title: "Запись перенесена",
+                      body: `Новая дата: ${date}, ${slotStart}–${slotEnd}. Код: ${ap.code}.`,
+                      read: false,
+                    },
+                    ...ap.notifications,
+                  ],
+                }
+              : ap
+          ),
+        }));
+        return { ok: true };
+      },
+
+      staffUpdateCitizenData: (appointmentId, patch, user) => {
+        const apt = get().appointments.find((a) => a.id === appointmentId);
+        if (!apt) return { ok: false, error: "Запись не найдена" };
+        const now = new Date().toISOString();
+        const next = {
+          fullName: patch.fullName?.trim() ?? apt.fullName,
+          phone: patch.phone?.trim() ?? apt.phone,
+          email:
+            patch.email !== undefined
+              ? patch.email?.trim() || undefined
+              : apt.email,
+          topic: patch.topic?.trim() ?? apt.topic,
+          category: patch.category ?? apt.category,
+          description:
+            patch.description !== undefined
+              ? patch.description?.trim() || undefined
+              : apt.description,
+        };
+        if (!next.fullName || next.fullName.split(/\s+/).length < 2) {
+          return { ok: false, error: "Укажите полное ФИО" };
+        }
+        if (!next.phone) return { ok: false, error: "Укажите телефон" };
+        if (!next.topic) return { ok: false, error: "Укажите тему" };
+
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === appointmentId
+              ? {
+                  ...a,
+                  ...next,
+                  updatedAt: now,
+                  history: [
+                    ...a.history,
+                    {
+                      at: now,
+                      action: "Данные записи изменены",
+                      detail: user.fullName,
+                    },
+                  ],
+                }
+              : a
+          ),
+          appeals: s.appeals.map((ap) =>
+            ap.appointmentId === appointmentId
+              ? {
+                  ...ap,
+                  fullName: next.fullName,
+                  phone: next.phone,
+                  email: next.email,
+                  topic: next.topic,
+                  category: next.category,
+                  summary:
+                    next.description ||
+                    ap.summary ||
+                    next.topic,
+                  updatedAt: now,
+                }
+              : ap
+          ),
+        }));
+        return { ok: true };
+      },
+
+      staffSetAppealStage: (appealId, stage, user, note) => {
+        const appeal = get().appeals.find((a) => a.id === appealId);
+        if (!appeal) return { ok: false, error: "Обращение не найдено" };
+        const now = new Date().toISOString();
+        const aptStatus: Partial<
+          Record<AppealStage, Appointment["status"]>
+        > = {
+          cancelled: "cancelled",
+          reception_done: "completed",
+          closed: "completed",
+          answered: "completed",
+          registered: "confirmed",
+          under_review: "confirmed",
+          ready_for_reception: "confirmed",
+          in_control: "completed",
+        };
+        const nextAptStatus = aptStatus[stage];
+        set((s) => ({
+          appeals: s.appeals.map((a) =>
+            a.id === appealId
+              ? {
+                  ...a,
+                  stage,
+                  updatedAt: now,
+                  controlLog: [
+                    {
+                      id: generateId("cl"),
+                      at: now,
+                      authorId: user.id,
+                      authorName: user.fullName,
+                      action: `Этап → ${stage}`,
+                      comment: note || "Смена этапа сотрудником",
+                    },
+                    ...a.controlLog,
+                  ],
+                }
+              : a
+          ),
+          appointments: s.appointments.map((ap) =>
+            ap.id === appeal.appointmentId && nextAptStatus
+              ? {
+                  ...ap,
+                  status: nextAptStatus,
+                  updatedAt: now,
+                  history: [
+                    ...ap.history,
+                    {
+                      at: now,
+                      action: `Этап обращения: ${stage}`,
+                      detail: user.fullName,
+                    },
                   ],
                 }
               : ap
@@ -650,23 +1103,17 @@ export const usePlatformStore = create<PlatformStore>()(
           (a) => a.code.toUpperCase() === code.trim().toUpperCase()
         );
         if (!appeal) return { ok: false, error: "Обращение не найдено" };
-        if (appeal.feedback)
+        // Оценка сервиса (в т.ч. онлайн-записи) — по любой действующей записи;
+        // после приёма критерии о приёмной/сроках тоже уместны.
+        if (appeal.stage === "cancelled") {
           return {
             ok: false,
-            error: "Оценка по этому обращению уже отправлена",
-          };
-        if (
-          !["answered", "closed", "in_control", "reception_done"].includes(
-            appeal.stage
-          )
-        ) {
-          return {
-            ok: false,
-            error: "Оценка доступна после проведения приёма",
+            error: "По отменённой записи оценка не принимается",
           };
         }
 
         const now = new Date().toISOString();
+        const isEdit = Boolean(appeal.feedback);
         set((s) => ({
           appeals: s.appeals.map((a) =>
             a.id === appeal.id
@@ -678,6 +1125,19 @@ export const usePlatformStore = create<PlatformStore>()(
                       ? ("closed" as AppealStage)
                       : a.stage,
                   updatedAt: now,
+                  controlLog: [
+                    {
+                      id: generateId("cl"),
+                      at: now,
+                      authorId: "citizen",
+                      authorName: a.fullName,
+                      action: isEdit
+                        ? "Оценка приёма изменена"
+                        : "Оценка приёма направлена",
+                      comment: "Обратная связь гражданина",
+                    },
+                    ...a.controlLog,
+                  ],
                 }
               : a
           ),
@@ -765,6 +1225,76 @@ export const usePlatformStore = create<PlatformStore>()(
       clearSurveyResponses: () => {
         set({ surveyResponses: [] });
       },
+
+      updateServiceContent: (patch) => {
+        set((s) => ({
+          serviceContent: {
+            ...(s.serviceContent ?? defaultServiceContent()),
+            ...patch,
+          },
+        }));
+      },
+
+      updateBookingRules: (patch) => {
+        set((s) => {
+          const sc = s.serviceContent ?? defaultServiceContent();
+          return {
+            serviceContent: {
+              ...sc,
+              rules: { ...sc.rules, ...patch },
+            },
+          };
+        });
+      },
+
+      setAdminModule: (m) => set({ adminModule: m }),
+
+      resetServiceContent: () => {
+        set({ serviceContent: defaultServiceContent() });
+      },
+
+      setEligibilityTree: (tree) => {
+        set({ eligibilityTree: tree });
+      },
+
+      patchEligibilityNode: (id, patch) => {
+        set((s) => ({
+          eligibilityTree: updateEligibilityNode(
+            (s.eligibilityTree?.length
+              ? s.eligibilityTree
+              : seedEligibilityTree()) as EligibilityNode[],
+            id,
+            patch
+          ) as EligibilityTreeNode[],
+        }));
+      },
+
+      removeEligibilityNode: (id) => {
+        set((s) => ({
+          eligibilityTree: deleteEligibilityNode(
+            (s.eligibilityTree?.length
+              ? s.eligibilityTree
+              : seedEligibilityTree()) as EligibilityNode[],
+            id
+          ) as EligibilityTreeNode[],
+        }));
+      },
+
+      addEligibilityNode: (parentId, node) => {
+        set((s) => ({
+          eligibilityTree: addEligibilityChild(
+            (s.eligibilityTree?.length
+              ? s.eligibilityTree
+              : seedEligibilityTree()) as EligibilityNode[],
+            parentId,
+            node as EligibilityNode
+          ) as EligibilityTreeNode[],
+        }));
+      },
+
+      resetEligibilityTree: () => {
+        set({ eligibilityTree: seedEligibilityTree() });
+      },
     }),
     {
       name: STORAGE_KEY,
@@ -789,6 +1319,9 @@ export const usePlatformStore = create<PlatformStore>()(
         surveyMeta: s.surveyMeta,
         surveyQuestions: s.surveyQuestions,
         surveyResponses: s.surveyResponses,
+        serviceContent: s.serviceContent,
+        adminModule: s.adminModule,
+        eligibilityTree: s.eligibilityTree,
       }),
       migrate: (persisted) => {
         const p = persisted as Partial<PlatformState>;
@@ -803,6 +1336,12 @@ export const usePlatformStore = create<PlatformStore>()(
               ? p.surveyQuestions
               : base.surveyQuestions,
           surveyResponses: p.surveyResponses ?? base.surveyResponses,
+          serviceContent: p.serviceContent ?? base.serviceContent,
+          adminModule: p.adminModule ?? "reception",
+          eligibilityTree:
+            p.eligibilityTree && p.eligibilityTree.length
+              ? p.eligibilityTree
+              : base.eligibilityTree,
         } as PlatformState;
       },
     }
@@ -855,6 +1394,12 @@ export function useStore() {
           ? store.surveyQuestions
           : initialData().surveyQuestions,
       surveyResponses: store.surveyResponses ?? [],
+      serviceContent: store.serviceContent ?? defaultServiceContent(),
+      adminModule: store.adminModule ?? "reception",
+      eligibilityTree:
+        store.eligibilityTree?.length
+          ? store.eligibilityTree
+          : seedEligibilityTree(),
     } satisfies PlatformState,
     currentUser,
     login: store.login,
@@ -867,6 +1412,12 @@ export function useStore() {
     recoverCodesByPhone: store.recoverCodesByPhone,
     cancelAppointment: store.cancelAppointment,
     rescheduleAppointment: store.rescheduleAppointment,
+    staffCancelAppointment: store.staffCancelAppointment,
+    staffRestoreAppointment: store.staffRestoreAppointment,
+    staffSetAppointmentStatus: store.staffSetAppointmentStatus,
+    staffRescheduleAppointment: store.staffRescheduleAppointment,
+    staffUpdateCitizenData: store.staffUpdateCitizenData,
+    staffSetAppealStage: store.staffSetAppealStage,
     updateAppeal: store.updateAppeal,
     startPrep: store.startPrep,
     completePrep: store.completePrep,
@@ -885,5 +1436,14 @@ export function useStore() {
     resetSurveyQuestions: store.resetSurveyQuestions,
     submitSurveyResponse: store.submitSurveyResponse,
     clearSurveyResponses: store.clearSurveyResponses,
+    updateServiceContent: store.updateServiceContent,
+    updateBookingRules: store.updateBookingRules,
+    setAdminModule: store.setAdminModule,
+    resetServiceContent: store.resetServiceContent,
+    setEligibilityTree: store.setEligibilityTree,
+    patchEligibilityNode: store.patchEligibilityNode,
+    removeEligibilityNode: store.removeEligibilityNode,
+    addEligibilityNode: store.addEligibilityNode,
+    resetEligibilityTree: store.resetEligibilityTree,
   };
 }

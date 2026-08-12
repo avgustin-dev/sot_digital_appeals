@@ -15,9 +15,11 @@ import { useI18n } from "@/lib/i18n";
 import { EmblemKR } from "@/components/brand/Emblem";
 import { useStore } from "@/lib/store";
 import { formatDateRu } from "@/lib/slots";
+import { defaultServiceContent } from "@/lib/serviceContent";
+import { CourtContactsBlock } from "@/components/ui/CourtContactsBlock";
 
 /**
- * Хаб раздела «Приём граждан руководством ВС КР»
+ * Хаб раздела «Приём граждан руководством Верховного суда Кыргызской Республики»
  * UX-идеи: qabul.sud.uz (статус, код, статистика, оценка) + предмет приёма КР.
  */
 export default function HomePage() {
@@ -26,13 +28,51 @@ export default function HomePage() {
   const router = useRouter();
   const { ready, state, lookupByCode, recoverCodesByPhone } = useStore();
 
+  const sc = state.serviceContent ?? defaultServiceContent();
+  const hubTitle = isKy
+    ? sc.hubTitleKy || sc.hubTitleRu
+    : sc.hubTitleRu || sc.hubTitleKy;
+  const hubLead = isKy
+    ? sc.hubLeadKy || sc.hubLeadRu
+    : sc.hubLeadRu || sc.hubLeadKy;
+  const hubCta = isKy
+    ? sc.hubCtaKy || sc.hubCtaRu
+    : sc.hubCtaRu || sc.hubCtaKy;
+  const memoTitle = isKy
+    ? sc.memoTitleKy || sc.memoTitleRu
+    : sc.memoTitleRu || sc.memoTitleKy;
+  const memoItems = isKy
+    ? sc.memoItemsKy?.length
+      ? sc.memoItemsKy
+      : sc.memoItemsRu
+    : sc.memoItemsRu?.length
+      ? sc.memoItemsRu
+      : sc.memoItemsKy;
+  const allowed = isKy
+    ? sc.allowedKy?.length
+      ? sc.allowedKy
+      : sc.allowedRu?.length
+        ? sc.allowedRu
+        : RECEPTION_ALLOWED
+    : sc.allowedRu?.length
+      ? sc.allowedRu
+      : RECEPTION_ALLOWED;
+  const forbidden = isKy
+    ? sc.forbiddenKy?.length
+      ? sc.forbiddenKy
+      : sc.forbiddenRu?.length
+        ? sc.forbiddenRu
+        : RECEPTION_FORBIDDEN
+    : sc.forbiddenRu?.length
+      ? sc.forbiddenRu
+      : RECEPTION_FORBIDDEN;
+
   const [statusCode, setStatusCode] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [statusOk, setStatusOk] = useState(false);
 
   const [recoverPhone, setRecoverPhone] = useState("");
   const [recoverMsg, setRecoverMsg] = useState("");
-
   const [rateCode, setRateCode] = useState("");
 
   const stats = useMemo(() => {
@@ -104,13 +144,6 @@ export default function HomePage() {
     );
   }
 
-  function onRate(e: React.FormEvent) {
-    e.preventDefault();
-    if (rateCode.trim()) {
-      router.push(`/feedback/${rateCode.trim().toUpperCase()}`);
-    }
-  }
-
   return (
     <div className="bg-court-mist">
       {/* Hero раздела */}
@@ -121,32 +154,29 @@ export default function HomePage() {
             {t.orgName}
           </p>
           <h1 className="mt-2 text-2xl font-bold leading-snug text-court-navy sm:text-3xl">
-            {isKy
-              ? "Жетекчилик тарабынан жарандарды кабыл алуу"
-              : "Приём граждан руководством Верховного суда"}
+            {hubTitle}
           </h1>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-court-muted sm:text-base">
+          <p className="mx-auto mt-4 max-w-2xl text-left text-sm leading-relaxed text-court-ink sm:text-base sm:text-center">
+            {hubLead}
+          </p>
+          <p className="mx-auto mt-3 max-w-2xl text-left text-xs leading-relaxed text-court-muted sm:text-center sm:text-sm">
             {isKy
-              ? "Алдын ала онлайн-жазылуу, кайрылуунун картасы, жеке кабыл алуу, көзөмөл жана баалоо."
-              : "Предварительная онлайн-запись, карточка обращения, личный приём, контроль исполнения и оценка."}
+              ? "Төмөндө — жазылуу, жазылууну башкаруу, эрежелер жана сервис сапатын баалоо (электрондук жазылуу + кабыл алуу)."
+              : "Ниже — запись на приём, управление записью, правила и оценка качества сервиса (электронная запись и работа общественной приёмной)."}
           </p>
 
           <div className="mx-auto mt-6 max-w-md rounded-lg border border-court-line bg-court-mist/50 p-5 text-left shadow-sm">
-            <div className="text-sm font-semibold text-court-navy">
+            <div className="text-sm text-center font-semibold text-court-navy">
               {isKy
-                ? "Жеке кабыл алууга арыз калтыруу"
-                : "Оставить заявку на личный приём"}
+                ? "Жеке кабыл алууга жазылуу"
+                : "Электронная запись на личный приём"}
             </div>
-            <p className="mt-1 text-xs text-court-muted">
-              {isKy
-                ? "Адегенде предмет текшерилет, андан кийин маалымат жана убакыт."
-                : "Сначала проверка предмета приёма, затем сведения и время."}
-            </p>
+
             <Link
               href="/book"
               className="btn-primary mt-4 w-full !py-2.5"
             >
-              {isKy ? "Кызматтан пайдалануу" : "Воспользоваться сервисом"}
+              {hubCta}
             </Link>
           </div>
         </div>
@@ -155,32 +185,20 @@ export default function HomePage() {
       <div className="mx-auto max-w-5xl space-y-4 px-4 py-6 md:px-6 md:py-8">
         {/* Памятка */}
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-relaxed text-court-ink sm:px-5">
-          <div className="font-semibold text-amber-900">
-            {isKy ? "Кайрылуучуга эскертме" : "Памятка для заявителя"}
-          </div>
+          <div className="font-semibold text-amber-900">{memoTitle}</div>
           <ul className="mt-2 list-disc space-y-1.5 pl-4 text-amber-950/90">
-            <li>
-              {isKy
-                ? "Жеке кабыл алууда конкреттүү сот иштери, чечимдердин мыйзамдуулугу жана кароонун натыйжалары талкууланбайт."
-                : "На личном приёме не обсуждаются конкретные судебные дела, законность решений и результаты рассмотрения дел."}
-            </li>
-            <li>
-              {isKy
-                ? "Кабыл алуу: сот өндүрүшүн уюштуруу, соттун иши, мыйзамдар боюнча сунуштар."
-                : "Предмет приёма: организация судопроизводства, деятельность суда, предложения по законодательству."}
-            </li>
-            <li>
-              {isKy
-                ? "Соттордун көз карандысыздыгы толук сакталат."
-                : "Независимость судей обеспечивается в полном объёме."}
-            </li>
-            <li>
-              {isKy
-                ? "Жазылуу акысыз; келүү — жазылган күн жана убакыт боюнча."
-                : "Запись бесплатна; явка — строго в выбранный день и интервал."}
-            </li>
+            {(memoItems?.length
+              ? memoItems
+              : isKy
+                ? defaultServiceContent().memoItemsKy
+                : defaultServiceContent().memoItemsRu
+            ).map((item) => (
+              <li key={item}>{item}</li>
+            ))}
           </ul>
         </div>
+
+        <CourtContactsBlock isKy={isKy} showSchedule />
 
         {/* Статистика + статус / код / оценка */}
         <div className="grid gap-4 lg:grid-cols-2">
@@ -300,10 +318,25 @@ export default function HomePage() {
             <div className="rounded-lg border border-court-line bg-white p-5 shadow-sm">
               <h2 className="text-base font-semibold text-court-navy">
                 {isKy
-                  ? "Кабыл алууну баалоо"
-                  : "Оценить результаты приёма"}
+                  ? "Сервисти баалоо"
+                  : "Оценка сервиса записи и приёма"}
               </h2>
-              <form onSubmit={onRate} className="mt-3 space-y-2">
+              <p className="mt-1 text-xs text-court-muted">
+                {isKy
+                  ? "Электрондук жазылуунун ыңгайлуулугу жана коомдук кабыл алуунун иши. Каттоо кодун киргизиңиз."
+                  : "Удобство электронной записи и качество работы общественной приёмной. Введите регистрационный код записи."}
+              </p>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (rateCode.trim()) {
+                    router.push(
+                      `/feedback/${rateCode.trim().toUpperCase()}`
+                    );
+                  }
+                }}
+                className="mt-3 space-y-2"
+              >
                 <input
                   className="input font-mono uppercase"
                   value={rateCode}
@@ -314,6 +347,12 @@ export default function HomePage() {
                   {isKy ? "Баалоого өтүү" : "Перейти к оценке"}
                 </button>
               </form>
+              <Link
+                href="/feedback"
+                className="mt-2 inline-block text-xs font-medium text-court-blue hover:underline"
+              >
+                {isKy ? "Бөлүм жөнүндө →" : "Подробнее об оценке →"}
+              </Link>
             </div>
           </div>
         </div>
@@ -325,7 +364,7 @@ export default function HomePage() {
               {t.home.allowed}
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-court-ink">
-              {RECEPTION_ALLOWED.map((i) => (
+              {allowed.map((i) => (
                 <li key={i}>{i}</li>
               ))}
             </ul>
@@ -335,7 +374,7 @@ export default function HomePage() {
               {t.home.forbidden}
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-court-ink">
-              {RECEPTION_FORBIDDEN.map((i) => (
+              {forbidden.map((i) => (
                 <li key={i}>{i}</li>
               ))}
             </ul>
@@ -343,8 +382,18 @@ export default function HomePage() {
         </div>
 
         <div className="rounded-lg border border-court-line bg-white p-5 sm:p-6">
-          <h2 className="section-title mb-1">{t.home.cycle}</h2>
-          <p className="mb-4 text-sm text-court-muted">{t.home.cycleLead}</p>
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <h2 className="section-title !mb-0">{t.home.cycle}</h2>
+            <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+              {isKy ? "Демо" : "Демо"}
+            </span>
+          </div>
+          <p className="mb-2 text-sm text-court-muted">{t.home.cycleLead}</p>
+          <p className="mb-4 text-xs text-slate-500">
+            {isKy
+              ? "Төмөнкү этаптар — демо-түшүндүрмө. Расмий порталда бул бөлүм өзгөчө баракча катары калбашы мүмкүн."
+              : "Схема этапов приведена для демонстрации. В официальной версии отдельная страница «Порядок работы» может не публиковаться как самостоятельный раздел."}
+          </p>
           <ProgressSteps
             steps={PIPELINE_STEPS.map((s) => ({
               title: s.title,
@@ -357,19 +406,13 @@ export default function HomePage() {
               href="/process"
               className="font-medium text-court-blue hover:underline"
             >
-              {t.footer.process} →
+              {t.footer.process} ({isKy ? "демо" : "демо"}) →
             </Link>
             <Link
               href="/rules"
               className="font-medium text-court-blue hover:underline"
             >
               {t.footer.rules} →
-            </Link>
-            <Link
-              href="/survey"
-              className="font-medium text-court-blue hover:underline"
-            >
-              {isKy ? "Сотторду баалоо анкетасы" : "Анкета оценки судов"} →
             </Link>
           </div>
         </div>

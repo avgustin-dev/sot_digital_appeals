@@ -2,12 +2,29 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  ExternalLink,
+} from "lucide-react";
 import { useStore } from "@/lib/store";
 import { StageBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { Collapsible } from "@/components/ui/Collapsible";
 import { ClipboardCheck } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
+
+const ACTION_PRESETS = [
+  "Ход исполнения",
+  "Запрос документов",
+  "Согласование",
+  "Напоминание ответственному",
+  "Частичное исполнение",
+  "Готово к ответу",
+];
 
 export default function ControlPage() {
   const {
@@ -17,26 +34,90 @@ export default function ControlPage() {
     setAssignmentStatus,
     submitFinalAnswer,
   } = useStore();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isKy = lang === "ky";
   const [selectedId, setSelectedId] = useState("");
-  const [action, setAction] = useState("Ход исполнения");
+  const [filter, setFilter] = useState<"all" | "open" | "overdue" | "done">(
+    "all"
+  );
+  const [action, setAction] = useState(ACTION_PRESETS[0]);
   const [comment, setComment] = useState("");
   const [answer, setAnswer] = useState("");
   const [msg, setMsg] = useState("");
+  const [err, setErr] = useState(false);
+
+  const today = new Date().toISOString().slice(0, 10);
 
   const items = useMemo(() => {
     let list = state.appeals.filter((a) =>
-      ["in_control", "answered", "reception_done"].includes(a.stage)
+      ["in_control", "answered", "reception_done", "closed"].includes(a.stage)
     );
     if (currentUser?.role === "responsible") {
       list = list.filter(
         (a) => a.assignment?.responsibleUserId === currentUser.id
       );
     }
-    return list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [state.appeals, currentUser]);
+    list = list.sort((a, b) => {
+      const da = a.assignment?.dueDate || "9999";
+      const db = b.assignment?.dueDate || "9999";
+      return da.localeCompare(db);
+    });
+    if (filter === "open") {
+      list = list.filter(
+        (a) =>
+          a.stage === "in_control" &&
+          a.assignment &&
+          a.assignment.status !== "done"
+      );
+    }
+    if (filter === "overdue") {
+      list = list.filter(
+        (a) =>
+          a.stage === "in_control" &&
+          a.assignment?.dueDate &&
+          a.assignment.dueDate < today &&
+          a.assignment.status !== "done"
+      );
+    }
+    if (filter === "done") {
+      list = list.filter(
+        (a) =>
+          a.stage === "answered" ||
+          a.stage === "closed" ||
+          a.assignment?.status === "done"
+      );
+    }
+    return list;
+  }, [state.appeals, currentUser, filter, today]);
 
-  const selected = items.find((a) => a.id === selectedId);
+  const selected = items.find((a) => a.id === selectedId) ||
+    state.appeals.find((a) => a.id === selectedId);
+
+  const counts = useMemo(() => {
+    const base = state.appeals.filter((a) =>
+      ["in_control", "answered", "reception_done", "closed"].includes(a.stage)
+    );
+    const open = base.filter(
+      (a) =>
+        a.stage === "in_control" &&
+        a.assignment &&
+        a.assignment.status !== "done"
+    ).length;
+    const overdue = base.filter(
+      (a) =>
+        a.stage === "in_control" &&
+        a.assignment?.dueDate &&
+        a.assignment.dueDate < today &&
+        a.assignment.status !== "done"
+    ).length;
+    const done = base.filter(
+      (a) =>
+        a.stage === "answered" ||
+        a.stage === "closed" ||
+        a.assignment?.status === "done"
+    ).length;
+    return { open, overdue, done, all: base.length };
+  }, [state.appeals, today]);
 
   function onLog(e: React.FormEvent) {
     e.preventDefault();
@@ -44,22 +125,35 @@ export default function ControlPage() {
     addControlLog(selected.id, currentUser, action, comment);
     setAssignmentStatus(selected.id, "in_progress");
     setComment("");
-    setMsg("Запись в журнале контроля добавлена.");
+    setErr(false);
+    setMsg("Запись в журнале добавлена.");
   }
 
   function onAnswer(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !selected) return;
+    if (answer.trim().length < 20) {
+      setErr(true);
+      setMsg("Ответ слишком короткий (минимум ~20 символов).");
+      return;
+    }
     submitFinalAnswer(selected.id, currentUser, answer);
     setAnswer("");
-    setMsg(
-      "Ответ направлен. Гражданин может оценить работу: /feedback/" +
-        selected.code
+    setErr(false);
+    setMsg("Ответ направлен. Гражданин может оценить: /feedback/" + selected.code);
+  }
+
+  function isOverdue(a: typeof selected) {
+    if (!a?.assignment) return false;
+    return (
+      a.stage === "in_control" &&
+      a.assignment.dueDate < today &&
+      a.assignment.status !== "done"
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <Breadcrumbs
         items={[
           { label: t.crumbs.admin, href: "/admin" },
@@ -67,155 +161,293 @@ export default function ControlPage() {
         ]}
       />
       <div>
-        <h1 className="section-title">{t.admin.control}</h1>
-        <p className="mt-1 text-base text-court-muted">
-          Исполнение поручений, журнал контроля, направление ответа заявителю.
+        <h1 className="section-title">
+          {isKy ? "Көзөмөл поручений" : "Контроль поручений"}
+        </h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {isKy
+            ? "Тапшырма → журнал → жооп. Кечигүүлөр бөлүнгөн."
+            : "Поручение → журнал хода → ответ гражданину. Просроченные выделены."}
         </p>
       </div>
 
+      <div className="grid gap-2 sm:grid-cols-4">
+        {(
+          [
+            { key: "all" as const, label: isKy ? "Баары" : "Все", n: counts.all, icon: ClipboardCheck },
+            { key: "open" as const, label: isKy ? "Ачык" : "В работе", n: counts.open, icon: Clock },
+            { key: "overdue" as const, label: isKy ? "Мөөнөтү өткөн" : "Просрочено", n: counts.overdue, icon: AlertTriangle },
+            { key: "done" as const, label: isKy ? "Бүттү" : "Закрыто", n: counts.done, icon: CheckCircle2 },
+          ] as const
+        ).map((c) => {
+          const Icon = c.icon;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setFilter(c.key)}
+              className={cn(
+                "flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition",
+                filter === c.key
+                  ? "border-court-navy bg-court-navy text-white shadow-sm"
+                  : "border-slate-200 bg-white hover:border-slate-300"
+              )}
+            >
+              <Icon
+                className={cn(
+                  "h-5 w-5 shrink-0",
+                  filter === c.key ? "text-white/90" : "text-slate-400"
+                )}
+              />
+              <div>
+                <div className="text-xs opacity-80">{c.label}</div>
+                <div className="text-xl font-semibold tabular-nums">{c.n}</div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
       {msg && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        <div
+          className={cn(
+            "rounded-lg border px-4 py-3 text-sm",
+            err
+              ? "border-red-200 bg-red-50 text-red-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-900"
+          )}
+        >
           {msg}
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.15fr]">
-        <section className="card p-5">
-          <h2 className="mb-4 font-display text-xl font-semibold text-court-navy">
-            На контроле
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.15fr)]">
+        <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
+          <h2 className="mb-3 text-base font-semibold text-slate-900">
+            {isKy ? "Тизме" : "Список поручений"}
           </h2>
           {items.length === 0 ? (
             <EmptyState
               icon={ClipboardCheck}
-              title="Нет поручений"
-              description="После личного приёма обращения появятся здесь."
+              title={isKy ? "Бош" : "Нет поручений"}
+              description={
+                isKy
+                  ? "Жеке кабыл алуудан кийин бул жерде пайда болот."
+                  : "После личного приёма обращения появятся здесь."
+              }
               className="border-0 shadow-none"
             />
           ) : (
-            <ul className="space-y-2">
-              {items.map((a) => (
-                <li key={a.id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedId(a.id);
-                      setMsg("");
-                    }}
-                    className={`w-full rounded-xl border px-3 py-3 text-left ${
-                      selectedId === a.id
-                        ? "border-court-gold bg-court-goldPale"
-                        : "border-court-line hover:bg-court-mist"
-                    }`}
-                  >
-                    <div className="flex justify-between gap-2">
-                      <div className="font-mono text-xs text-court-muted">
-                        {a.code}
+            <ul className="max-h-[min(70vh,560px)] space-y-2 overflow-y-auto">
+              {items.map((a) => {
+                const overdue = isOverdue(a);
+                return (
+                  <li key={a.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(a.id);
+                        setMsg("");
+                        setAnswer("");
+                      }}
+                      className={cn(
+                        "w-full rounded-xl border px-3 py-3 text-left transition",
+                        selectedId === a.id
+                          ? "border-court-navy bg-slate-50 ring-1 ring-court-navy/20"
+                          : overdue
+                            ? "border-amber-200 bg-amber-50/50 hover:bg-amber-50"
+                            : "border-slate-200 hover:bg-slate-50"
+                      )}
+                    >
+                      <div className="flex justify-between gap-2">
+                        <div className="font-mono text-xs text-slate-500">
+                          {a.code}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1">
+                          {overdue && (
+                            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                              {isKy ? "Мөөнөт" : "Просрочка"}
+                            </span>
+                          )}
+                          <StageBadge stage={a.stage} />
+                        </div>
                       </div>
-                      <StageBadge stage={a.stage} />
-                    </div>
-                    <div className="font-semibold text-court-navy">
-                      {a.fullName}
-                    </div>
-                    <div className="text-xs text-court-muted">
-                      {a.assignment?.responsibleName || "—"} · срок{" "}
-                      {a.assignment?.dueDate || "—"}
-                    </div>
-                  </button>
-                </li>
-              ))}
+                      <div className="mt-0.5 font-semibold text-slate-900">
+                        {a.fullName}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {a.assignment?.responsibleName || "—"} ·{" "}
+                        {isKy ? "мөөнөт" : "срок"}{" "}
+                        {a.assignment?.dueDate || "—"}
+                        {a.assignment?.status &&
+                          ` · ${a.assignment.status}`}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
 
-        <section className="card p-5">
+        <section className="rounded-xl border border-slate-200/80 bg-white p-4 shadow-sm sm:p-5">
           {!selected ? (
-            <p className="text-sm text-court-muted">
-              Выберите обращение для работы.
+            <p className="py-12 text-center text-sm text-slate-400">
+              {isKy
+                ? "Солдо поручение тандаңыз."
+                : "Выберите поручение слева."}
             </p>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4">
               <div>
-                <h2 className="font-display text-xl font-semibold text-court-navy">
-                  {selected.code}
-                </h2>
-                <p className="text-sm text-court-muted">{selected.topic}</p>
-                <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                  <strong>Поручение:</strong>{" "}
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900">
+                      {selected.code}
+                    </h2>
+                    <p className="text-sm text-slate-500">{selected.topic}</p>
+                  </div>
+                  <Link
+                    href={`/admin/appeals/${selected.id}`}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-court-blue hover:underline"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    {isKy ? "Карточка" : "Полная карточка"}
+                  </Link>
+                </div>
+                <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-950">
+                  <strong>{isKy ? "Тапшырма:" : "Поручение:"}</strong>{" "}
                   {selected.assignment?.text || "—"}
                 </div>
-                <Link
-                  href={`/admin/appeals/${selected.id}`}
-                  className="mt-2 inline-block text-xs font-semibold text-court-blue"
-                >
-                  Карточка →
-                </Link>
+                {selected.assignment && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(
+                      [
+                        "open",
+                        "in_progress",
+                        "done",
+                        "overdue",
+                      ] as const
+                    ).map((st) => (
+                      <button
+                        key={st}
+                        type="button"
+                        onClick={() => {
+                          setAssignmentStatus(selected.id, st);
+                          setMsg(
+                            isKy
+                              ? `Статус: ${st}`
+                              : `Статус поручения: ${st}`
+                          );
+                        }}
+                        className={cn(
+                          "rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize",
+                          selected.assignment?.status === st
+                            ? "border-court-navy bg-court-navy text-white"
+                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                        )}
+                      >
+                        {st}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <form onSubmit={onLog} className="space-y-3 border-t border-court-line pt-4">
-                <h3 className="font-semibold text-court-navy">
-                  Журнал исполнения
-                </h3>
-                <div>
-                  <label className="label">Действие</label>
-                  <input
-                    className="input"
-                    value={action}
-                    onChange={(e) => setAction(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="label">Комментарий / результат</label>
-                  <textarea
-                    className="input min-h-[70px]"
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    required
-                  />
-                </div>
-                <button type="submit" className="btn-outline">
-                  Добавить в журнал
-                </button>
-              </form>
-
-              {selected.controlLog.length > 0 && (
-                <ul className="max-h-40 space-y-2 overflow-y-auto text-xs">
-                  {selected.controlLog.map((c) => (
-                    <li key={c.id} className="rounded-lg bg-court-mist px-3 py-2">
-                      <strong>{c.action}</strong> — {c.comment}
-                      <div className="text-court-muted">
-                        {c.authorName} ·{" "}
-                        {new Date(c.at).toLocaleString("ru-RU")}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {selected.stage === "in_control" && (
-                <form
-                  onSubmit={onAnswer}
-                  className="space-y-3 border-t border-court-line pt-4"
-                >
-                  <h3 className="font-semibold text-court-navy">
-                    Полный обоснованный ответ гражданину
-                  </h3>
-                  <textarea
-                    className="input min-h-[120px]"
-                    value={answer}
-                    onChange={(e) => setAnswer(e.target.value)}
-                    placeholder="Текст ответа…"
-                    required
-                  />
-                  <button type="submit" className="btn-primary">
-                    Направить ответ и закрыть поручение
+              <Collapsible
+                title={isKy ? "Журнал аткаруу" : "Журнал исполнения"}
+                subtitle={isKy ? "Жаңы жазуу" : "Добавить ход работ"}
+                defaultOpen={selected.stage === "in_control"}
+              >
+                <form onSubmit={onLog} className="space-y-3">
+                  <label className="block space-y-1">
+                    <span className="text-xs font-semibold text-slate-600">
+                      {isKy ? "Аракет" : "Действие"}
+                    </span>
+                    <select
+                      className="input w-full"
+                      value={action}
+                      onChange={(e) => setAction(e.target.value)}
+                    >
+                      {ACTION_PRESETS.map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block space-y-1">
+                    <span className="text-xs font-semibold text-slate-600">
+                      {isKy ? "Комментарий" : "Комментарий / результат"}
+                    </span>
+                    <textarea
+                      className="input min-h-[70px] w-full"
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      required
+                    />
+                  </label>
+                  <button type="submit" className="btn-outline !text-sm">
+                    {isKy ? "Журналга кошуу" : "Добавить в журнал"}
                   </button>
                 </form>
+                {selected.controlLog.length > 0 && (
+                  <ul className="mt-4 max-h-36 space-y-2 overflow-y-auto text-xs">
+                    {selected.controlLog.map((c) => (
+                      <li
+                        key={c.id}
+                        className="rounded-lg bg-slate-50 px-3 py-2"
+                      >
+                        <strong>{c.action}</strong> — {c.comment}
+                        <div className="text-slate-400">
+                          {c.authorName} ·{" "}
+                          {new Date(c.at).toLocaleString("ru-RU")}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Collapsible>
+
+              {selected.stage === "in_control" && (
+                <Collapsible
+                  title={
+                    isKy
+                      ? "Жооп жаранга"
+                      : "Полный ответ гражданину"
+                  }
+                  subtitle={
+                    isKy
+                      ? "Жөнөтүлгөндөн кийин баалоо жеткиликтүү"
+                      : "После отправки доступна оценка /feedback"
+                  }
+                  defaultOpen
+                >
+                  <form onSubmit={onAnswer} className="space-y-3">
+                    <textarea
+                      className="input min-h-[120px] w-full"
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                      placeholder={
+                        isKy
+                          ? "Жооптун тексти…"
+                          : "Текст обоснованного ответа…"
+                      }
+                      required
+                    />
+                    <button type="submit" className="btn-primary !text-sm">
+                      {isKy
+                        ? "Жооп жөнөтүү"
+                        : "Направить ответ и закрыть поручение"}
+                    </button>
+                  </form>
+                </Collapsible>
               )}
 
-              {selected.stage === "answered" && (
+              {(selected.stage === "answered" ||
+                selected.stage === "closed") && (
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-                  Ответ направлен. Ссылка для оценки:{" "}
+                  {isKy ? "Жооп жөнөтүлдү." : "Ответ направлен."}{" "}
                   <Link
                     href={`/feedback/${selected.code}`}
                     className="font-semibold underline"

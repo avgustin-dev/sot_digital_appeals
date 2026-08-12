@@ -7,10 +7,15 @@ import { FEEDBACK_QUESTIONS } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useI18n } from "@/lib/i18n";
 
+/**
+ * Оценка сервиса: электронная запись + общественная приёмная.
+ * Вход по регистрационному коду; можно изменить ранее направленную оценку.
+ */
 export default function FeedbackIndexPage() {
   const [code, setCode] = useState("");
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isKy = lang === "ky";
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-6 md:py-12">
@@ -22,8 +27,28 @@ export default function FeedbackIndexPage() {
       />
 
       <div className="card p-6 sm:p-8">
-        <h1 className="section-title">{t.feedback.title}</h1>
-        <p className="mt-2 text-base text-court-muted">{t.feedback.lead}</p>
+        <h1 className="section-title">
+          {isKy
+            ? "Сервисти баалоо"
+            : "Оценка сервиса записи и приёма"}
+        </h1>
+        <p className="mt-2 text-sm leading-relaxed text-court-muted">
+          {isKy
+            ? "Урматтуу жарандар! Сиздин пикириңиз электрондук жазылуунун жана коомдук кабыл алуунун сапатын жакшыртуу үчүн маанилүү. Каттоо кодун киргизиңиз (талондо / билдирүүдө). Баалоону кийинчерээк өзгөртүүгө болот."
+            : "Уважаемые граждане! Ваше мнение необходимо для совершенствования электронной записи на приём и работы общественной приёмной. Укажите регистрационный код записи (из талона подтверждения или уведомления). Оценку можно направить после приёма и при необходимости изменить."}
+        </p>
+
+        <div className="mt-4 rounded-lg border border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+          <div className="font-semibold text-slate-800">
+            {isKy ? "Эмне бааланат" : "Что оценивается"}
+          </div>
+          <ul className="mt-2 list-disc space-y-1 pl-4">
+            {FEEDBACK_QUESTIONS.map((q) => (
+              <li key={q.key}>{q.label}</li>
+            ))}
+          </ul>
+        </div>
+
         <form
           className="mt-6 space-y-4"
           onSubmit={(e) => {
@@ -49,27 +74,23 @@ export default function FeedbackIndexPage() {
             {t.feedback.go}
           </button>
         </form>
-        <ul className="mt-6 space-y-2 border-t border-court-line pt-5 text-base text-court-muted">
-          {FEEDBACK_QUESTIONS.map((q) => (
-            <li key={q.key}>— {q.label}</li>
-          ))}
-        </ul>
-        <p className="mt-4 text-sm text-court-muted">
-          {t.my.demo}:{" "}
-          <button
-            type="button"
-            className="font-mono text-court-blue underline"
-            onClick={() => router.push("/feedback/VS-2026-0910")}
-          >
-            VS-2026-0910
-          </button>
+
+        <p className="mt-6 text-xs text-court-muted">
+          {isKy
+            ? "Код белгисиз болсо — «Менин жазылууум» бөлүмүнөн кириңиз."
+            : "Если код неизвестен — откройте «Моя запись» (код + PIN)."}
         </p>
-        <Link
-          href="/my-appointment"
-          className="mt-4 inline-block text-sm font-semibold text-court-blue hover:underline"
-        >
-          {t.nav.myAppointment} →
-        </Link>
+        <div className="mt-3 flex flex-wrap gap-3 text-sm">
+          <Link
+            href="/my-appointment"
+            className="font-semibold text-court-blue hover:underline"
+          >
+            {t.nav.myAppointment} →
+          </Link>
+          <Link href="/book" className="font-semibold text-court-blue hover:underline">
+            {t.nav.book} →
+          </Link>
+        </div>
       </div>
     </div>
   );

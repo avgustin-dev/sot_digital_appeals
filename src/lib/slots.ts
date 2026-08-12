@@ -110,9 +110,67 @@ export function getAvailableSlotsForDate(
   });
 }
 
+/** Отображение даты: дд.мм.гггг (формат КР, не гггг-мм-дд) */
 export function formatDateRu(dateStr: string): string {
+  if (!dateStr) return "";
+  // already display?
+  if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateStr)) return dateStr;
   const d = parseISO(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
   return format(d, "dd.MM.yyyy");
+}
+
+/** ISO yyyy-MM-dd → дд.мм.гггг */
+export function isoToDisplay(iso: string): string {
+  return formatDateRu(iso);
+}
+
+/**
+ * дд.мм.гггг или дд.мм.гг → ISO yyyy-MM-dd
+ * Внутреннее хранение остаётся ISO; на экране — только display.
+ */
+export function displayToIso(input: string): string | null {
+  const s = input.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2}|\d{4})$/);
+  if (!m) return null;
+  let [, dd, mm, yy] = m;
+  if (yy.length === 2) yy = `20${yy}`;
+  const d = parseInt(dd, 10);
+  const mo = parseInt(mm, 10);
+  const y = parseInt(yy, 10);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+  const iso = `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  const check = parseISO(iso);
+  if (Number.isNaN(check.getTime())) return null;
+  return iso;
+}
+
+/** Список времён 24ч (без AM/PM) для select */
+export function generateTimeOptions(
+  fromMinutes = 0,
+  toMinutes = 24 * 60,
+  step = 5
+): string[] {
+  const out: string[] = [];
+  for (let m = fromMinutes; m < toMinutes; m += step) {
+    out.push(minutesToTime(m));
+  }
+  return out;
+}
+
+/** Разбор списка дат из поля (дд.мм.гггг или ISO) */
+export function parseDateList(s: string): string[] {
+  return s
+    .split(/[,;\s]+/)
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .map((x) => displayToIso(x))
+    .filter((x): x is string => Boolean(x));
+}
+
+export function formatDateList(isos: string[]): string {
+  return isos.map(isoToDisplay).join(", ");
 }
 
 export function weekdayRu(
