@@ -6,8 +6,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Collapsible } from "@/components/ui/Collapsible";
 
 /**
- * Понятная инструкция для сотрудников приёмной / руководства.
- * Без «демо-жаргона» — только рабочий порядок.
+ * Служебная инструкция: официальный стиль, без разговорных формулировок.
  */
 export default function AdminHelpPage() {
   const { t, lang } = useI18n();
@@ -25,83 +24,88 @@ export default function AdminHelpPage() {
       <div>
         <h1 className="section-title">
           {isKy
-            ? "Нускама кызматкерлер үчүн"
-            : "Инструкция для сотрудников"}
+            ? "Кызматтык нускама"
+            : "Служебная инструкция"}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
           {isKy
-            ? "Бул бөлүм — жарандарды кабыл алуу сервисинде ким эмне кылат. Кыска жана тартип боюнча."
-            : "Этот раздел объясняет, кто что делает в сервисе приёма граждан. Коротко и по порядку."}
+            ? "Тартиби жарандарды жетекчилик тарабынан кабыл алуунун электрондук сервисинде. Кыска, тартип боюнча."
+            : "Порядок работы в электронной системе приёма граждан руководством Верховного суда Кыргызской Республики."}
         </p>
       </div>
 
-      <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
-        <strong>
-          {isKy ? "Эки дүйнө:" : "Две стороны:"}
-        </strong>{" "}
-        {isKy
-          ? "1) жарандар — сайтта жазылат; 2) сиз — /admin ичинде иштейсиз. Жаран «код» жана «PIN» алат."
-          : "1) граждане работают на публичном сайте; 2) вы — в служебном кабинете /admin. После записи у гражданина есть код и PIN."}
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+        <p className="font-semibold text-slate-900">
+          {isKy ? "Негизги бөлүштүрүү" : "Основное разделение"}
+        </p>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-700">
+          <li>
+            {isKy
+              ? "Жарандар: ачык сайт (жазылуу, статус, башкаруу жазылуу, баалоо)."
+              : "Граждане: публичный раздел (запись, статус обращения, управление записью, оценка сервиса)."}
+          </li>
+          <li>
+            {isKy
+              ? "Кызматкерлер: /admin — кароо, даярдоо, кабыл алуу, көзөмөл."
+              : "Сотрудники: /admin — рассмотрение, подготовка, приём, контроль исполнения."}
+          </li>
+          <li>
+            {isKy
+              ? "Жазылуудан кийин берилет: каттоо коду жана PIN-код."
+              : "После регистрации записи выдаются: регистрационный код и PIN-код."}
+          </li>
+        </ul>
       </div>
 
       <Collapsible
-        title={isKy ? "1. Жаран эмне кылат?" : "1. Что делает гражданин?"}
+        title={
+          isKy
+            ? "1. Жарандын аракеттери"
+            : "1. Действия гражданина"
+        }
         defaultOpen
       >
         <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-700">
           <li>
             {isKy ? (
               <>
-                <Link href="/book" className="font-medium text-court-blue">
-                  /book
-                </Link>{" "}
-                — жазылуу (эрежелер → допуск → маалымат → күн).
-              </>
-            ) : (
-              <>
-                Записывается на{" "}
+                Жазылуу:{" "}
                 <Link href="/book" className="font-medium text-court-blue">
                   /book
                 </Link>
-                : правила → допуск (можно / нельзя) → ФИО → дата и время.
+                {" "}
+                (эрежелер → допуск → маалымат → күн жана убакыт).
+              </>
+            ) : (
+              <>
+                Запись на приём:{" "}
+                <Link href="/book" className="font-medium text-court-blue">
+                  /book
+                </Link>
+                {" "}
+                (правила → проверка допуска → сведения → дата и время).
               </>
             )}
           </li>
           <li>
             {isKy
-              ? "Алат: каттоо коду (мисалы VS-2026-1001) жана PIN (4 сан)."
-              : "Получает: регистрационный код (например VS-2026-1001) и PIN (4 цифры)."}
-          </li>
-          <li>
-            {isKy ? (
-              <>
-                <strong>Статус</strong> (главная) — <em>только код</em>, PIN
-                керек эмес.
-              </>
-            ) : (
-              <>
-                <strong>Статус на главной</strong> — только{" "}
-                <em>код</em>, PIN не нужен.
-              </>
-            )}
-          </li>
-          <li>
-            {isKy ? (
-              <>
-                <strong>Менин жазылууум</strong> (/my-appointment) — код +{" "}
-                <em>PIN</em>: которуу, жокко чыгаруу.
-              </>
-            ) : (
-              <>
-                <strong>«Моя запись»</strong> (/my-appointment) — код +{" "}
-                <em>PIN</em>: перенос и отмена.
-              </>
-            )}
+              ? "Берилет: каттоо коду (мисалы, VS-2026-1001) жана PIN-код (төрт сан)."
+              : "Выдаются: регистрационный код (например, VS-2026-1001) и PIN-код (четыре цифры)."}
           </li>
           <li>
             {isKy
-              ? "Баалоо — код боюнча (/feedback), кабыл алуудан кийин."
-              : "Оценка сервиса — по коду (/feedback), после приёма (или раньше — про запись)."}
+              ? "Статусту текшерүү (башкы бет): гана каттоо коду. PIN-код талап кылынбайт."
+              : "Проверка статуса (главная страница): только регистрационный код. PIN-код не требуется."}
+          </li>
+          <li>
+            {isKy
+              ? "Жазылууну которуу же жокко чыгаруу («Менин жазылууум»): каттоо коду жана PIN-код."
+              : "Перенос или отмена записи («Моя запись»): регистрационный код и PIN-код."}
+          </li>
+          <li>
+            {isKy
+              ? "Сервисти баалоо: /feedback, каттоо коду боюнча."
+              : "Оценка сервиса: /feedback, по регистрационному коду."}
           </li>
         </ol>
       </Collapsible>
@@ -109,16 +113,14 @@ export default function AdminHelpPage() {
       <Collapsible
         title={
           isKy
-            ? "2. Код жана PIN — кайда сизде?"
-            : "2. Где у вас код и PIN?"
+            ? "2. Каттоо коду жана PIN-код"
+            : "2. Регистрационный код и PIN-код"
         }
         defaultOpen
       >
         <div className="space-y-3 text-sm text-slate-700">
-          <p>
-            {isKy
-              ? "Мурун админкада PIN көрүнбөй калган. Эми:"
-              : "Раньше PIN в админке почти не показывался. Сейчас:"}
+          <p className="font-medium text-slate-900">
+            {isKy ? "Кайда көрүнөт (кызматтык кабинет)" : "Где отображается (служебный кабинет)"}
           </p>
           <ul className="list-disc space-y-2 pl-5">
             <li>
@@ -129,13 +131,18 @@ export default function AdminHelpPage() {
                 {isKy ? "Кайрылуулар" : "Обращения"}
               </Link>
               {isKy
-                ? " — таблицада тилке «PIN»."
-                : " — колонка «PIN» в таблице."}
+                ? " — тилке «PIN»."
+                : " — колонка «PIN»."}
             </li>
             <li>
               {isKy
-                ? "Карточканын ичинде — чоң блок «Код + PIN» (жаранга айтуу үчүн)."
-                : "В карточке обращения — крупный блок «Код + PIN» (чтобы подсказать гражданину по телефону)."}
+                ? "Карточка кайрылуунун — блок «Каттоо коду» жана «PIN-код»."
+                : "Карточка обращения — блок «Регистрационный код» и «PIN-код»."}
+            </li>
+            <li>
+              {isKy
+                ? "Календарь — жазылуу сабында PIN."
+                : "Календарь — PIN в строке записи."}
             </li>
             <li>
               {isKy
@@ -143,26 +150,68 @@ export default function AdminHelpPage() {
                 : "Поиск: код, ФИО, телефон, PIN."}
             </li>
           </ul>
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+          <table className="mt-2 w-full border border-slate-200 text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="border-b border-slate-200 px-3 py-2">
+                  {isKy ? "Операция" : "Операция"}
+                </th>
+                <th className="border-b border-slate-200 px-3 py-2">
+                  {isKy ? "Талап кылынат" : "Требуется"}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td className="border-b border-slate-100 px-3 py-2">
+                  {isKy
+                    ? "Статусту текшерүү (башкы бет)"
+                    : "Проверка статуса (главная)"}
+                </td>
+                <td className="border-b border-slate-100 px-3 py-2 font-medium">
+                  {isKy ? "код" : "код"}
+                </td>
+              </tr>
+              <tr>
+                <td className="border-b border-slate-100 px-3 py-2">
+                  {isKy
+                    ? "Которуу / жокко чыгаруу"
+                    : "Перенос / отмена записи"}
+                </td>
+                <td className="border-b border-slate-100 px-3 py-2 font-medium">
+                  {isKy ? "код + PIN" : "код + PIN"}
+                </td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2">
+                  {isKy ? "Баалоо" : "Оценка сервиса"}
+                </td>
+                <td className="px-3 py-2 font-medium">
+                  {isKy ? "код" : "код"}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
             {isKy
-              ? "Статус текшерүү = код. Башкаруу жазылуу = код + PIN. Айырманы жаранга түшүндүрүңүз."
-              : "Проверка статуса = только код. Управление записью = код + PIN. Объясните гражданину разницу."}
-          </div>
+              ? "PIN-код — жашыруун маалымат. Жаранга суроо-талап боюнча гана берилет."
+              : "PIN-код является конфиденциальным. Сообщается гражданину по обоснованному запросу."}
+          </p>
         </div>
       </Collapsible>
 
       <Collapsible
         title={
           isKy
-            ? "3. Сиздин иш тартиби (этаптар)"
-            : "3. Ваш рабочий порядок (этапы)"
+            ? "3. Этаптар (кызматкер)"
+            : "3. Этапы работы сотрудника"
         }
         defaultOpen
       >
         <ol className="list-decimal space-y-3 pl-5 text-sm text-slate-700">
           <li>
             <strong>
-              {isKy ? "Жазылуу келди" : "Пришла запись"}
+              {isKy ? "Каттоо жазылуу" : "Регистрация записи"}
             </strong>
             <br />
             <Link href="/admin" className="text-court-blue">
@@ -179,25 +228,23 @@ export default function AdminHelpPage() {
             <br />
             <span className="text-xs text-slate-500">
               {isKy
-                ? "Ким, качан, тема. Записьти ачып караңыз."
-                : "Кто, когда, тема. Откройте карточку."}
+                ? "Жазылуунун маалыматтарын жана карточканы карап чыгуу."
+                : "Просмотр сведений о записи и открытие электронной карточки."}
             </span>
           </li>
           <li>
             <strong>
-              {isKy ? "Даярдоо (этап 2)" : "Подготовка (этап 2)"}
+              {isKy ? "Алдын ала изилдөө (этап 2)" : "Предварительное изучение (этап 2)"}
             </strong>
             <br />
             <Link href="/admin/reception" className="text-court-blue">
               {isKy ? "Даярдоо / кабыл алуу" : "Подготовка и приём"}
             </Link>
-            {" / "}
-            {isKy ? "карточка" : "карточка обращения"}
             <br />
             <span className="text-xs text-slate-500">
               {isKy
-                ? "Изучение баштаңыз, кыскача мазмун, «даяр» деңгээлге чыгарыңыз. Конкреттүү сот иштери — жок."
-                : "Начните изучение, краткое содержание, выведите в «готово к приёму». Конкретные судебные дела — не предмет приёма."}
+                ? "Изучение, кыскача мазмун, этап «кабыл алууга даяр». Конкреттүү сот иштери каралбайт."
+                : "Изучение, краткое содержание, перевод в этап «готово к приёму». Конкретные судебные дела не рассматриваются."}
             </span>
           </li>
           <li>
@@ -211,13 +258,13 @@ export default function AdminHelpPage() {
             <br />
             <span className="text-xs text-slate-500">
               {isKy
-                ? "Протокол: эмне айтты, эмне түшүндүрүлдү, тапшырма, жооптуу адам."
-                : "Протокол: что сказал гражданин, что разъяснили, поручение, ответственный."}
+                ? "Протокол: кайрылуунун маңызы, түшүндүрмө, тапшырма, жооптуу адам."
+                : "Протокол: существо обращения, разъяснение, поручение, ответственное лицо."}
             </span>
           </li>
           <li>
             <strong>
-              {isKy ? "Көзөмөл (этап 4)" : "Контроль (этап 4)"}
+              {isKy ? "Көзөмөл (этап 4)" : "Контроль исполнения (этап 4)"}
             </strong>
             <br />
             <Link href="/admin/control" className="text-court-blue">
@@ -226,8 +273,8 @@ export default function AdminHelpPage() {
             <br />
             <span className="text-xs text-slate-500">
               {isKy
-                ? "Журнал, мөөнөт, акырында жооп жаранга."
-                : "Журнал хода, сроки, в конце — ответ гражданину."}
+                ? "Журнал, мөөнөттөр, жооптун жөнөтүлүшү."
+                : "Журнал исполнения, сроки, направление ответа гражданину."}
             </span>
           </li>
           <li>
@@ -241,8 +288,8 @@ export default function AdminHelpPage() {
             <br />
             <span className="text-xs text-slate-500">
               {isKy
-                ? "Кайталанма кайрылуулар, темалар, баалар."
-                : "Повторные обращения, темы, оценки."}
+                ? "Кайталанма кайрылуулар, темалар, баалоолор."
+                : "Повторные обращения, темы, оценки качества."}
             </span>
           </li>
         </ol>
@@ -251,50 +298,50 @@ export default function AdminHelpPage() {
       <Collapsible
         title={
           isKy
-            ? "4. Жаран чалып: «статусумду билгим келет»"
-            : "4. Гражданин звонит: «хочу узнать статус»"
+            ? "4. Суроо-талап боюнча статус"
+            : "4. Запрос гражданина о статусе"
         }
         defaultOpen
       >
         <ol className="list-decimal space-y-2 pl-5 text-sm text-slate-700">
           <li>
             {isKy
-              ? "Сураңыз: код (VS-…) же телефон / ФИО."
-              : "Спросите код (VS-…) или телефон / ФИО."}
+              ? "Аныктоо: каттоо коду же телефон / ФИО."
+              : "Идентификация: регистрационный код либо телефон / ФИО."}
           </li>
           <li>
             {isKy ? (
               <>
-                Ачыңыз{" "}
+                Бөлүм{" "}
                 <Link href="/admin/appeals" className="text-court-blue">
-                  Кайрылуулар
-                </Link>{" "}
-                — издеңиз.
+                  «Кайрылуулар»
+                </Link>
+                {" "}— издөө.
               </>
             ) : (
               <>
-                Откройте{" "}
+                Раздел{" "}
                 <Link href="/admin/appeals" className="text-court-blue">
-                  Обращения
-                </Link>{" "}
-                — найдите запись.
+                  «Обращения»
+                </Link>
+                {" "}— поиск записи.
               </>
             )}
           </li>
           <li>
             {isKy
-              ? "Айтыңыз этапты (мисалы: даярдоо, кабыл алууга даяр, көзөмөл)."
-              : "Назовите этап (например: на подготовке, готов к приёму, на контроле)."}
+              ? "Маалымат берүү: учурдагы этап жана, зарыл болсо, дата/убакыт."
+              : "Сообщение сведений: текущий этап и, при необходимости, дата и время приёма."}
           </li>
           <li>
             {isKy
-              ? "Эгер код/PIN унутулса — карточкадан код жана PIN айтыңыз (же кайра жөнөтүү — кийинки версияда SMS)."
-              : "Если забыл код/PIN — с карточки продиктуйте код и PIN (в проде позже — SMS)."}
+              ? "Код же PIN жоголгондо: карточкадан маалымат берүү (негиздүү суроо-талап боюнча)."
+              : "При утрате кода или PIN: сведения с карточки обращения (по обоснованному запросу)."}
           </li>
           <li>
             {isKy
-              ? "Статус өзү текшерүү: сайттын башкы бети → «Проверка состояния» + код."
-              : "Самостоятельно статус: главная сайта → «Проверка состояния» + код (без PIN)."}
+              ? "Өз алдынча текшерүү: башкы бет → «Проверка состояния» → код."
+              : "Самостоятельная проверка: главная страница → «Проверка состояния» → код."}
           </li>
         </ol>
       </Collapsible>
@@ -302,26 +349,21 @@ export default function AdminHelpPage() {
       <Collapsible
         title={
           isKy
-            ? "5. Жазылууну жокко / которуу / неявка"
-            : "5. Отмена / перенос / неявка"
+            ? "5. Жокко чыгаруу, которуу, неявка"
+            : "5. Отмена, перенос, неявка"
         }
         defaultOpen={false}
       >
         <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
           <li>
             {isKy
-              ? "Карточка же календарь → «Отмена», «Неявка», «Вернуть»."
-              : "Карточка или календарь → «Отмена», «Неявка», «Вернуть»."}
+              ? "Кызматкер: карточка же календарь — «Отмена», «Неявка», «Вернуть»; датаны өзгөртүү — блок «Дата, время и статусы»."
+              : "Сотрудник: карточка или календарь — «Отмена», «Неявка», «Вернуть»; изменение даты — блок «Дата, время и статусы»."}
           </li>
           <li>
             {isKy
-              ? "Жаран өзү: /my-appointment + код + PIN."
-              : "Гражданин сам: /my-appointment + код + PIN."}
-          </li>
-          <li>
-            {isKy
-              ? "Датаны өзгөртүү — карточкада «Дата, время и статусы»."
-              : "Смена даты — в карточке блок «Дата, время и статусы»."}
+              ? "Жаран: /my-appointment — каттоо коду жана PIN-код."
+              : "Гражданин: /my-appointment — регистрационный код и PIN-код."}
           </li>
         </ul>
       </Collapsible>
@@ -329,85 +371,359 @@ export default function AdminHelpPage() {
       <Collapsible
         title={
           isKy
-            ? "6. Тексттер, эрежелер, допуск"
-            : "6. Тексты, правила, допуск"
+            ? "6. Контент, допуск, график"
+            : "6. Контент, допуск, график"
         }
         defaultOpen={false}
       >
         <ul className="list-disc space-y-2 pl-5 text-sm text-slate-700">
           <li>
             <Link href="/admin/content" className="text-court-blue">
-              {isKy ? "Контент" : "Контент сервиса"}
+              {isKy ? "Контент сервиса" : "Контент сервиса"}
             </Link>
             {isKy
-              ? " — башкы бет, эрежелердин тексттери."
-              : " — тексты главной и правил записи."}
+              ? " — ачык бөлүмдүн тексттери жана эрежелер."
+              : " — тексты публичного раздела и правила записи."}
           </li>
           <li>
             <Link href="/admin/eligibility" className="text-court-blue">
               {isKy ? "Допуск дарагы" : "Дерево допуска"}
             </Link>
             {isKy
-              ? " — эмнеге жазылууга болот / баш тартуу."
-              : " — по каким вопросам можно записаться / отказ."}
+              ? " — жазылууга уруксат / баш тартуу категориялары."
+              : " — категории допуска к записи и тексты отказа."}
           </li>
           <li>
             <Link href="/admin/settings" className="text-court-blue">
-              {isKy ? "График" : "График приёма"}
+              {isKy ? "График приёма" : "График приёма"}
             </Link>
             {isKy
-              ? " — күндөр, 24-саат убакыт, жабык күндөр."
-              : " — дни, время 24ч, закрытые даты."}
+              ? " — күндөр, убакыт (24 саат), жабык күндөр."
+              : " — дни приёма, время (24-часовой формат), закрытые даты."}
           </li>
         </ul>
       </Collapsible>
 
       <Collapsible
-        title={isKy ? "7. Опросник модулу" : "7. Модуль «Опросник»"}
+        title={
+          isKy
+            ? "7. Модуль «Сурамжылоо»"
+            : "7. Модуль «Опросник»"
+        }
         defaultOpen={false}
       >
         <p className="text-sm text-slate-700">
           {isKy
-            ? "Солдо «Опросник» — суроолорду түзөтүү. Жарандар анкетаны opros.sot.kg толтурат. Бул жерде негизги иш — кабыл алуу модулу."
-            : "Слева переключатель «Опросник» — правка вопросов. Граждане заполняют анкету на opros.sot.kg. Основная работа здесь — модуль «Приём граждан»."}
+            ? "Модуль «Сурамжылоо» — анкета суроолорун түзөтүү. Жарандардын анкета толтуруусу жана жыйынтыктар — opros.sot.kg. Негизги иш — модуль «Жарандарды кабыл алуу»."
+            : "Модуль «Опросник» предназначен для редактирования формулировок вопросов анкеты. Заполнение анкеты гражданами и учёт результатов осуществляются в системе opros.sot.kg. Основная работа в настоящем кабинете — модуль «Приём граждан»."}
         </p>
       </Collapsible>
 
       <Collapsible
-        title={isKy ? "8. Демо кирүү" : "8. Вход (демо)"}
-        defaultOpen={false}
+        title={
+          isKy
+            ? "8. Эсептер жана укуктар (демо)"
+            : "8. Учётные записи и права доступа (демо)"
+        }
+        defaultOpen
       >
-        <ul className="space-y-1 font-mono text-sm text-slate-700">
-          <li>priemnaya / priem123 — {isKy ? "кабыл алуу" : "приёмная"}</li>
-          <li>rukovodstvo / sud2026 — {isKy ? "жетекчилик" : "руководство"}</li>
-          <li>otvet1 / otvet123 — {isKy ? "жооптуу" : "ответственный"}</li>
-          <li>admin / admin123 — {isKy ? "админ" : "администратор"}</li>
-        </ul>
-        <p className="mt-2 text-xs text-slate-500">
-          {isKy
-            ? "Демо: маалымат браузерде (localStorage). Проддо — сервер болот."
-            : "Демо: данные в браузере (localStorage). В проде — сервер и SMS."}
-        </p>
+        <div className="space-y-4 text-sm text-slate-700">
+          <p>
+            {isKy
+              ? "Кирүү: /admin/login. Төмөндө демо-эсептер жана ролдор."
+              : "Вход: /admin/login. Ниже — демонстрационные учётные записи и роли."}
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] border border-slate-200 text-left text-sm">
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+                <tr>
+                  <th className="border-b border-slate-200 px-3 py-2">
+                    {isKy ? "Логин" : "Логин"}
+                  </th>
+                  <th className="border-b border-slate-200 px-3 py-2">
+                    {isKy ? "Сырсөз" : "Пароль"}
+                  </th>
+                  <th className="border-b border-slate-200 px-3 py-2">
+                    {isKy ? "Роль" : "Роль"}
+                  </th>
+                  <th className="border-b border-slate-200 px-3 py-2">
+                    {isKy ? "Дайындоо" : "Назначение"}
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="text-sm">
+                <tr>
+                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
+                    priemnaya
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
+                    priem123
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2">
+                    {isKy ? "Кабыл алуу (reception)" : "Приёмная (reception)"}
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2 text-xs text-slate-600">
+                    {isKy
+                      ? "Күнүмдүк иш: кайрылуулар, даярдоо, календарь"
+                      : "Текущая работа: обращения, подготовка, календарь"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
+                    rukovodstvo
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
+                    sud2026
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2">
+                    {isKy
+                      ? "Жетекчилик (leadership)"
+                      : "Руководство (leadership)"}
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2 text-xs text-slate-600">
+                    {isKy
+                      ? "Жеке кабыл алуу, протокол, мониторинг"
+                      : "Личный приём, протокол, мониторинг"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
+                    otvet1
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
+                    otvet123
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2">
+                    {isKy
+                      ? "Жооптуу (responsible)"
+                      : "Ответственный (responsible)"}
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2 text-xs text-slate-600">
+                    {isKy
+                      ? "Тапшырмалардын аткарылышы (өзүнө берилген)"
+                      : "Исполнение поручений (назначенных на сотрудника)"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
+                    otvet2
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
+                    otvet123
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2">
+                    {isKy
+                      ? "Жооптуу (responsible)"
+                      : "Ответственный (responsible)"}
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2 text-xs text-slate-600">
+                    {isKy
+                      ? "Экинчи жооптуу (демо)"
+                      : "Второй ответственный (демо)"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2 font-mono">admin</td>
+                  <td className="px-3 py-2 font-mono">admin123</td>
+                  <td className="px-3 py-2">
+                    {isKy ? "Администратор (admin)" : "Администратор (admin)"}
+                  </td>
+                  <td className="px-3 py-2 text-xs text-slate-600">
+                    {isKy
+                      ? "Толук жеткиликтүүлүк, графиканы жана контентти башкаруу"
+                      : "Полный доступ, настройки графика и контента"}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p className="font-medium text-slate-900">
+            {isKy ? "Ролдор боюнча мүмкүнчүлүктөр" : "Полномочия по ролям"}
+          </p>
+          <ul className="list-disc space-y-2 pl-5">
+            <li>
+              <strong>reception</strong>
+              {isKy
+                ? " — кайрылуулар, календарь, даярдоо, кабыл алуунун катышуусу, контент/допуск/графикти түзөтүү, мониторинг."
+                : " — обращения, календарь, подготовка, участие в приёме, редактирование контента/допуска/графика, мониторинг."}
+            </li>
+            <li>
+              <strong>leadership</strong>
+              {isKy
+                ? " — кабыл алууну фиксациялоо, протокол, мониторинг; контент жана график (демо)."
+                : " — фиксация личного приёма, протокол, мониторинг; контент и график (в демо)."}
+            </li>
+            <li>
+              <strong>responsible</strong>
+              {isKy
+                ? " — көзөмөл: негизинен өзүнө берилген тапшырмалар, журнал, жооп."
+                : " — контроль: преимущественно поручения, назначенные на данного сотрудника; журнал, ответ."}
+            </li>
+            <li>
+              <strong>admin</strong>
+              {isKy
+                ? " — бардык бөлүмдөр; сброс демо-маалыматтар; толук башкаруу."
+                : " — все разделы; сброс демонстрационных данных; полное управление."}
+            </li>
+          </ul>
+
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[480px] border border-slate-200 text-left text-xs">
+              <thead className="bg-slate-50 uppercase text-slate-500">
+                <tr>
+                  <th className="border-b border-slate-200 px-2 py-2">
+                    {isKy ? "Бөлүм / аракет" : "Раздел / действие"}
+                  </th>
+                  <th className="border-b border-slate-200 px-2 py-2 text-center">
+                    rec.
+                  </th>
+                  <th className="border-b border-slate-200 px-2 py-2 text-center">
+                    lead.
+                  </th>
+                  <th className="border-b border-slate-200 px-2 py-2 text-center">
+                    resp.
+                  </th>
+                  <th className="border-b border-slate-200 px-2 py-2 text-center">
+                    admin
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="text-slate-700">
+                {(
+                  [
+                    [
+                      isKy ? "Иш тактасы, кайрылуулар, календарь" : "Рабочий стол, обращения, календарь",
+                      "✓",
+                      "✓",
+                      "✓",
+                      "✓",
+                    ],
+                    [
+                      isKy ? "Даярдоо / жеке кабыл алуу" : "Подготовка / личный приём",
+                      "✓",
+                      "✓",
+                      "—",
+                      "✓",
+                    ],
+                    [
+                      isKy ? "Көзөмөл поручений" : "Контроль поручений",
+                      "✓",
+                      "✓",
+                      "✓*",
+                      "✓",
+                    ],
+                    [
+                      isKy ? "Мониторинг" : "Мониторинг",
+                      "✓",
+                      "✓",
+                      "✓",
+                      "✓",
+                    ],
+                    [
+                      isKy ? "Контент, допуск, график" : "Контент, допуск, график",
+                      "✓",
+                      "✓",
+                      "—",
+                      "✓",
+                    ],
+                    [
+                      isKy ? "Демо-маалыматты сброс" : "Сброс демо-данных",
+                      "—",
+                      "—",
+                      "—",
+                      "✓",
+                    ],
+                    [
+                      isKy ? "Опросник (суроолор)" : "Опросник (вопросы)",
+                      "✓",
+                      "✓",
+                      "✓",
+                      "✓",
+                    ],
+                  ] as const
+                ).map((row) => (
+                  <tr key={row[0]}>
+                    <td className="border-b border-slate-100 px-2 py-1.5">
+                      {row[0]}
+                    </td>
+                    <td className="border-b border-slate-100 px-2 py-1.5 text-center">
+                      {row[1]}
+                    </td>
+                    <td className="border-b border-slate-100 px-2 py-1.5 text-center">
+                      {row[2]}
+                    </td>
+                    <td className="border-b border-slate-100 px-2 py-1.5 text-center">
+                      {row[3]}
+                    </td>
+                    <td className="border-b border-slate-100 px-2 py-1.5 text-center">
+                      {row[4]}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-slate-500">
+            {isKy
+              ? "* responsible — негизинен өзүнө дайындалган тапшырмалар. Демо: маалымат браузерде сакталат."
+              : "* responsible — преимущественно поручения, назначенные на сотрудника. Демо: данные хранятся в браузере."}
+          </p>
+
+          <p className="font-medium text-slate-900">
+            {isKy ? "Кызматкерлердин толук аты (демо)" : "ФИО сотрудников (демо)"}
+          </p>
+          <ul className="list-disc space-y-1 pl-5 text-xs text-slate-600">
+            <li>
+              priemnaya — Касымова А. Б.,{" "}
+              {isKy ? "башкы адис" : "главный специалист"},{" "}
+              {isKy
+                ? "Жарандар менен иштөө бөлүмү"
+                : "отдел по работе с гражданами"}
+            </li>
+            <li>
+              rukovodstvo —{" "}
+              {isKy
+                ? "Жогорку соттун жетекчилиги (кабыл алуу)"
+                : "Руководство Верховного суда КР (приём)"}
+            </li>
+            <li>
+              otvet1 — Жумабеков Э. С.,{" "}
+              {isKy ? "жооптуу" : "ответственный по обращениям"}
+            </li>
+            <li>
+              otvet2 — Сыдыкова М. А.,{" "}
+              {isKy ? "жооптуу" : "ответственный по обращениям"}
+            </li>
+            <li>
+              admin —{" "}
+              {isKy
+                ? "администратор (толук укук)"
+                : "администратор системы"}
+            </li>
+          </ul>
+        </div>
       </Collapsible>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 text-sm shadow-sm">
         <div className="font-semibold text-slate-900">
-          {isKy ? "Бир сүйлөмдө" : "В одном предложении"}
+          {isKy ? "Жыйынтык" : "Итог"}
         </div>
         <p className="mt-2 text-slate-600">
           {isKy
-            ? "Жаран жазылат → сиз даярдайсыз жана кабыл аласыз → тапшырманы көзөмөлдөйсүз → жооп → баалоо. Код — статус; код+PIN — башкаруу жазылуу."
-            : "Гражданин записывается → вы готовите и проводите приём → контролируете поручение → ответ → оценка. Код — статус; код+PIN — управление записью."}
+            ? "Жаран жазылат → даярдоо жана кабыл алуу → тапшырманы көзөмөлдөө → жооп → баалоо. Каттоо коду — статус; каттоо коду жана PIN — жазылууну башкаруу."
+            : "Гражданин регистрирует запись → подготовка и личный приём → контроль поручения → ответ → оценка. Регистрационный код — статус; регистрационный код и PIN — управление записью."}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Link href="/admin" className="btn-primary !text-sm">
-            {isKy ? "Иш тактасы" : "К рабочему столу"}
+            {isKy ? "Иш тактасы" : "Рабочий стол"}
           </Link>
           <Link href="/admin/appeals" className="btn-outline !text-sm">
-            {isKy ? "Кайрылуулар + PIN" : "Обращения + PIN"}
+            {isKy ? "Кайрылуулар" : "Обращения"}
           </Link>
           <Link href="/" className="btn-outline !text-sm" target="_blank">
-            {isKy ? "Жарандардын сайты" : "Сайт граждан"}
+            {isKy ? "Ачык бөлүм" : "Публичный раздел"}
           </Link>
         </div>
       </div>
