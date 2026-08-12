@@ -18,6 +18,7 @@ import {
   ChartColumn,
   ExternalLink,
   GitBranch,
+  BookOpen,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { useStore } from "@/lib/store";
@@ -65,6 +66,7 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
       { href: "/admin/content", label: isKy ? "Контент сервиса" : "Контент сервиса", icon: FilePenLine, hint: isKy ? "Тексттер, эрежелер" : "Тексты, правила" },
       { href: "/admin/eligibility", label: isKy ? "Дарак допуску" : "Дерево допуска", icon: GitBranch, hint: isKy ? "Категориялар жазылуу" : "Категории записи" },
       { href: "/admin/settings", label: isKy ? "График" : "График приёма", icon: Settings, hint: isKy ? "Күндөр жана слоттор" : "Дни и слоты" },
+      { href: "/admin/help", label: isKy ? "Нускама" : "Инструкция", icon: BookOpen, hint: isKy ? "Кызматкерлер үчүн" : "Для сотрудников — по шагам" },
     ],
     [isKy]
   );

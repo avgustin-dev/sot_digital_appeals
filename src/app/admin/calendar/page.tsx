@@ -212,7 +212,12 @@ export default function StaffCalendarPage() {
                         {apt.fullName}
                       </div>
                       <div className="truncate text-xs text-slate-500">
-                        {apt.code} · {apt.topic} · {apt.phone}
+                        {apt.code}
+                        <span className="ml-1.5 rounded bg-amber-50 px-1 font-mono font-semibold text-amber-900">
+                          PIN {apt.pin}
+                        </span>
+                        {" · "}
+                        {apt.topic} · {apt.phone}
                       </div>
                     </Link>
 

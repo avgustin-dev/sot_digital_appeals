@@ -238,6 +238,40 @@ export default function AppealDetailPage() {
         </div>
       </div>
 
+      {/* Код + PIN — для подсказки гражданину (статус / «Моя запись») */}
+      {appointment && (
+        <section className="rounded-xl border-2 border-court-navy/20 bg-slate-50 p-4 shadow-sm">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Данные для гражданина (сообщить по запросу)
+          </h2>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+              <div className="text-[11px] text-slate-500">
+                Регистрационный код
+              </div>
+              <div className="mt-0.5 font-mono text-xl font-bold tracking-wide text-court-navy">
+                {appeal.code}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">
+                Главная → «Проверка состояния» — только код, без PIN
+              </p>
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+              <div className="text-[11px] font-medium text-amber-900/80">
+                PIN-код (секретный)
+              </div>
+              <div className="mt-0.5 font-mono text-xl font-bold tracking-[0.2em] text-amber-950">
+                {appointment.pin}
+              </div>
+              <p className="mt-1 text-[11px] text-amber-900/70">
+                «Моя запись» — код + PIN (перенос, отмена). Не публиковать в
+                открытых списках без необходимости.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
       {msg && (
         <div
           className={cn(

@@ -20,21 +20,29 @@ export default function AppealsListPage() {
   const [q, setQ] = useState("");
   const [stage, setStage] = useState<AppealStage | "all">("all");
 
+  function pinFor(appointmentId: string) {
+    return state.appointments.find((x) => x.id === appointmentId)?.pin ?? "—";
+  }
+
   const list = useMemo(() => {
     return state.appeals
       .filter((a) => {
         if (stage !== "all" && a.stage !== stage) return false;
         if (!q.trim()) return true;
         const s = q.toLowerCase();
+        const pin = state.appointments
+          .find((x) => x.id === a.appointmentId)
+          ?.pin?.toLowerCase();
         return (
           a.code.toLowerCase().includes(s) ||
           a.fullName.toLowerCase().includes(s) ||
           a.topic.toLowerCase().includes(s) ||
-          a.phone.includes(s)
+          a.phone.includes(s) ||
+          (pin ? pin.includes(s) : false)
         );
       })
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [state.appeals, q, stage]);
+  }, [state.appeals, state.appointments, q, stage]);
 
   return (
     <div className="space-y-6">
@@ -100,6 +108,7 @@ export default function AppealsListPage() {
               <thead>
                 <tr>
                   <th>Рег. код</th>
+                  <th>PIN</th>
                   <th>Заявитель</th>
                   <th>Тема обращения</th>
                   <th>Категория</th>
@@ -124,6 +133,14 @@ export default function AppealsListPage() {
                       {a.previousAppealIds.length > 0 && (
                         <div className="text-[11px] text-amber-700">повторное</div>
                       )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className="rounded bg-slate-100 px-2 py-0.5 font-mono text-sm font-bold tracking-wider text-slate-900"
+                        title="PIN для «Моя запись» (перенос/отмена)"
+                      >
+                        {pinFor(a.appointmentId)}
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-court-navy">
