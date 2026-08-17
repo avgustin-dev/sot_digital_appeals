@@ -1,75 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { PIPELINE_STEPS } from "@/lib/constants";
 import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useI18n } from "@/lib/i18n";
-
-const details = [
-  {
-    stage: "Этап 1",
-    title: "Онлайн-запись",
-    points: [
-      "ФИО, тема обращения, контактные данные",
-      "Календарь: интервалы по 20 минут с 08:00",
-      "Подтверждение, код записи и PIN-код",
-      "Перенос и отмена заявителем",
-    ],
-  },
-  {
-    stage: "Этап 2",
-    title: "Предварительное изучение",
-    points: [
-      "Электронная карточка обращения",
-      "Сведения о заявителе, содержание, категория",
-      "История и предыдущие обращения",
-      "Разъяснения в соответствии с законодательством",
-    ],
-  },
-  {
-    stage: "Этап 3",
-    title: "Личный приём",
-    points: [
-      "Изложение существа обращения",
-      "Разъяснение порядка дальнейших действий",
-      "Поручение в пределах компетенции",
-      "Назначение ответственного лица",
-    ],
-  },
-  {
-    stage: "Этап 4",
-    title: "Контроль исполнения",
-    points: [
-      "Роль «Ответственный по обращению»",
-      "Контроль исполнения поручения",
-      "Взаимодействие с подразделениями",
-      "Направление обоснованного ответа",
-    ],
-  },
-  {
-    stage: "Обратная связь",
-    title: "Оценка работы приёмной",
-    points: [
-      "Форма оценки после приёма",
-      "Уважительное отношение",
-      "Ясность дальнейших действий",
-      "Соблюдение сроков",
-    ],
-  },
-  {
-    stage: "Мониторинг",
-    title: "Анализ повторных обращений",
-    points: [
-      "Количество и темы повторных обращений",
-      "Выявление системных проблем",
-      "Сводка для руководства",
-    ],
-  },
-];
+import { useStore } from "@/lib/store";
+import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
 
 export default function ProcessPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isKy = lang === "ky";
+  const { state } = useStore();
+  const sc = mergeServiceContent(state.serviceContent);
+  const steps = sc.processSteps;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-12">
@@ -80,32 +23,42 @@ export default function ProcessPage() {
         ]}
       />
       <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-        <strong>Демонстрационный раздел.</strong> Страница поясняет этапы
-        работы сервиса для согласования. В официальной версии портала
-        отдельный публичный раздел «Порядок работы» может отсутствовать —
-        гражданину достаточно записи, правил и статуса обращения.
+        {pickLocale(isKy, sc.processNoticeRu, sc.processNoticeKy)}
       </div>
-      <h1 className="section-title mb-2">{t.home.cycle}</h1>
+      <h1 className="section-title mb-2">
+        {pickLocale(isKy, sc.cycleTitleRu, sc.cycleTitleKy) || t.home.cycle}
+      </h1>
       <p className="mb-8 max-w-3xl text-base text-court-muted">
-        {t.home.cycleLead}
+        {pickLocale(isKy, sc.cycleLeadRu, sc.cycleLeadKy) || t.home.cycleLead}
       </p>
 
       <ProgressSteps
-        steps={PIPELINE_STEPS.map((s) => ({ title: s.title, desc: s.desc }))}
+        steps={steps.map((s) => ({
+          title: pickLocale(isKy, s.titleRu, s.titleKy),
+          desc: pickLocale(isKy, s.pointsRu[0], s.pointsKy[0]),
+        }))}
         current={-1}
       />
 
       <div className="mt-10 grid gap-5 md:grid-cols-2">
-        {details.map((d) => (
-          <article key={d.title} className="card p-6">
+        {steps.map((d) => (
+          <article
+            key={d.titleRu}
+            className="card p-6"
+          >
             <div className="text-xs font-semibold uppercase tracking-wider text-court-gold">
-              {d.stage}
+              {pickLocale(isKy, d.stageRu, d.stageKy)}
             </div>
             <h2 className="mt-1 font-display text-xl font-semibold text-court-navy">
-              {d.title}
+              {pickLocale(isKy, d.titleRu, d.titleKy)}
             </h2>
             <ul className="mt-4 space-y-2 text-base text-court-muted">
-              {d.points.map((p) => (
+              {(isKy
+                ? d.pointsKy?.length
+                  ? d.pointsKy
+                  : d.pointsRu
+                : d.pointsRu
+              ).map((p) => (
                 <li key={p} className="flex gap-2">
                   <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-court-gold" />
                   {p}
@@ -118,10 +71,14 @@ export default function ProcessPage() {
 
       <div className="mt-10 flex flex-wrap gap-3">
         <Link href="/book" className="btn-primary !min-h-12">
-          {t.nav.bookCta}
+          {pickLocale(isKy, sc.navBookCtaRu, sc.navBookCtaKy) || t.nav.bookCta}
         </Link>
         <Link href="/rules" className="btn-outline !min-h-12">
-          {t.footer.rules}
+          {pickLocale(
+            isKy,
+            sc.headerNav.find((l) => l.href === "/rules")?.labelRu,
+            sc.headerNav.find((l) => l.href === "/rules")?.labelKy
+          ) || t.footer.rules}
         </Link>
       </div>
     </div>

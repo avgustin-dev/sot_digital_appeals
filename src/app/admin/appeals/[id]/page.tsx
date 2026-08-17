@@ -26,6 +26,8 @@ import { stageProgress, cn } from "@/lib/utils";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Collapsible } from "@/components/ui/Collapsible";
 import { useI18n } from "@/lib/i18n";
+import { ReviewRequestPanel } from "@/components/staff/ReviewRequestPanel";
+import { targetShort } from "@/lib/targets";
 
 export default function AppealDetailPage() {
   const params = useParams();
@@ -107,7 +109,8 @@ export default function AppealDetailPage() {
       newDate,
       state.calendar,
       state.appointments,
-      appointment.id
+      appointment.id,
+      appointment.targetId
     );
   }, [newDate, state.calendar, state.appointments, appointment]);
 
@@ -127,7 +130,10 @@ export default function AppealDetailPage() {
     !!currentUser &&
     ["reception", "admin", "leadership"].includes(currentUser.role);
   const canPrep =
-    canManage && ["registered", "under_review"].includes(appeal.stage);
+    canManage &&
+    ["registered", "under_review"].includes(appeal.stage) &&
+    appointment?.status !== "pending_review" &&
+    appointment?.status !== "rejected";
 
   function flash(ok: boolean, text: string) {
     setErr(!ok);
@@ -222,7 +228,7 @@ export default function AppealDetailPage() {
           <p className="text-sm text-slate-500">
             {appeal.phone}
             {appointment &&
-              ` · ${formatDateRu(appointment.date)} ${appointment.slotStart}–${appointment.slotEnd}`}
+              ` · ${targetShort(appointment.targetId, false, state.serviceContent)} · ${formatDateRu(appointment.date)} ${appointment.slotStart}–${appointment.slotEnd}`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -237,6 +243,13 @@ export default function AppealDetailPage() {
           </Link>
         </div>
       </div>
+
+      {appointment?.status === "pending_review" && (
+        <ReviewRequestPanel
+          appointment={appointment}
+          onDone={(ok, text) => flash(ok, text)}
+        />
+      )}
 
       {appointment && (
         <section className="rounded-xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
@@ -265,6 +278,24 @@ export default function AppealDetailPage() {
               <p className="mt-1 text-[11px] text-amber-900/70">
                 Перенос и отмена записи («Моя запись») — код и PIN. Конфиденциально.
               </p>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+              <div className="text-[11px] text-slate-500">Адресат приёма</div>
+              <div className="mt-0.5 font-medium text-slate-900">
+                {targetShort(appointment.targetId, false, state.serviceContent)}
+              </div>
+            </div>
+            <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+              <div className="text-[11px] text-slate-500">Сопровождающие</div>
+              <div className="mt-0.5 text-sm text-slate-800">
+                {appointment.companions.length === 0
+                  ? "Не указаны"
+                  : appointment.companions
+                      .map((c) =>
+                        c.phone ? `${c.fullName} (${c.phone})` : c.fullName
+                      )
+                      .join("; ")}
+              </div>
             </div>
           </div>
         </section>
@@ -801,7 +832,16 @@ export default function AppealDetailPage() {
                   key={n.id}
                   className="rounded-lg border border-slate-100 px-3 py-2 text-xs"
                 >
-                  <div className="font-semibold text-slate-800">{n.title}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="font-semibold text-slate-800">{n.title}</div>
+                    <span className="shrink-0 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-500">
+                      {n.channel === "sms"
+                        ? "SMS"
+                        : n.channel === "email"
+                          ? "E-mail"
+                          : "система"}
+                    </span>
+                  </div>
                   <div className="mt-1 text-slate-500">{n.body}</div>
                 </li>
               ))}

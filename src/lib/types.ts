@@ -18,11 +18,18 @@ export type AppealStage =
   | "cancelled";
 
 export type AppointmentStatus =
+  | "pending_review"
   | "confirmed"
   | "rescheduled"
   | "cancelled"
+  | "rejected"
   | "completed"
   | "no_show";
+
+export interface Companion {
+  fullName: string;
+  phone?: string;
+}
 
 export type AppealCategory =
   | "organization"
@@ -80,6 +87,10 @@ export interface Appointment {
   slotStart: string;
   slotEnd: string;
   status: AppointmentStatus;
+  /** К кому записан — id из RECEPTION_TARGETS */
+  targetId: string;
+  companions: Companion[];
+  reviewNote?: string;
   createdAt: string;
   updatedAt: string;
   history: AppointmentHistoryItem[];
@@ -231,7 +242,89 @@ export interface BookingRulesContent {
   agreeKy: string;
 }
 
+export interface CourtContactsContent {
+  trustPhone: string;
+  trustPhoneTel: string;
+  addressRu: string;
+  addressKy: string;
+  receptionOfficeRu: string;
+  receptionOfficeKy: string;
+  sourceNoteRu: string;
+  sourceNoteKy: string;
+  scheduleFootnoteRu: string;
+  scheduleFootnoteKy: string;
+}
+
+export interface LeadershipPerson {
+  id: string;
+  fullNameRu: string;
+  fullNameKy: string;
+  positionRu: string;
+  positionKy: string;
+  weekdayRu: string;
+  weekdayKy: string;
+  timeRu: string;
+  timeKy: string;
+  shortRu: string;
+  shortKy: string;
+  bookLabelRu: string;
+  bookLabelKy: string;
+  showInSchedule: boolean;
+  bookable: boolean;
+  windowKind: "fixed" | "calendar";
+  weekdays: number[];
+  startMinutes: number;
+  endMinutes: number;
+}
+
+export interface SiteNavLink {
+  href: string;
+  labelRu: string;
+  labelKy: string;
+}
+
+export interface HubNavCard {
+  href: string;
+  labelRu: string;
+  labelKy: string;
+  descRu: string;
+  descKy: string;
+}
+
+export interface ProcessStepContent {
+  stageRu: string;
+  stageKy: string;
+  titleRu: string;
+  titleKy: string;
+  pointsRu: string[];
+  pointsKy: string[];
+}
+
 export interface ServiceContent {
+  orgNameRu: string;
+  orgNameKy: string;
+  appNameRu: string;
+  appNameKy: string;
+  navBookCtaRu: string;
+  navBookCtaKy: string;
+  headerNav: SiteNavLink[];
+  hubNav: HubNavCard[];
+  footerReceptionRu: string;
+  footerReceptionKy: string;
+  footerDemoRu: string;
+  footerDemoKy: string;
+  footerIndependenceRu: string;
+  footerIndependenceKy: string;
+  footerNoCasesRu: string;
+  footerNoCasesKy: string;
+  footerCitizensRu: string;
+  footerCitizensKy: string;
+  footerHelpRu: string;
+  footerHelpKy: string;
+  footerImportantRu: string;
+  footerImportantKy: string;
+  hubKickerRu: string;
+  hubKickerKy: string;
   hubTitleRu: string;
   hubTitleKy: string;
   hubLeadRu: string;
@@ -242,14 +335,29 @@ export interface ServiceContent {
   memoTitleKy: string;
   memoItemsRu: string[];
   memoItemsKy: string[];
+  allowedTitleRu: string;
+  allowedTitleKy: string;
+  forbiddenTitleRu: string;
+  forbiddenTitleKy: string;
   allowedRu: string[];
   allowedKy: string[];
   forbiddenRu: string[];
   forbiddenKy: string[];
+  cycleTitleRu: string;
+  cycleTitleKy: string;
+  cycleLeadRu: string;
+  cycleLeadKy: string;
   bookTitleRu: string;
   bookTitleKy: string;
   bookSubtitleRu: string;
   bookSubtitleKy: string;
+  bookTargetHintRu: string;
+  bookTargetHintKy: string;
+  contacts: CourtContactsContent;
+  leadership: LeadershipPerson[];
+  processNoticeRu: string;
+  processNoticeKy: string;
+  processSteps: ProcessStepContent[];
   rules: BookingRulesContent;
 }
 

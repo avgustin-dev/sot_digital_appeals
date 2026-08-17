@@ -1,13 +1,11 @@
 "use client";
 
-import {
-  COURT_CONTACTS,
-  LEADERSHIP_RECEPTION_SCHEDULE,
-} from "@/lib/constants";
 import { MapPin, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/lib/store";
+import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
 
-/** Контакты и график руководства — по данным раздела sot.kg «График приёма граждан» */
+/** Контакты и график руководства — из CMS публичного сайта */
 export function CourtContactsBlock({
   isKy,
   showSchedule = true,
@@ -19,6 +17,11 @@ export function CourtContactsBlock({
   compact?: boolean;
   className?: string;
 }) {
+  const { state } = useStore();
+  const sc = mergeServiceContent(state.serviceContent);
+  const c = sc.contacts;
+  const schedule = sc.leadership.filter((row) => row.showInSchedule);
+
   return (
     <div
       className={cn(
@@ -38,7 +41,7 @@ export function CourtContactsBlock({
           : "Контакты и график приёма граждан"}
       </h2>
       <p className="mt-1 text-xs text-court-muted">
-        {isKy ? COURT_CONTACTS.sourceNoteKy : COURT_CONTACTS.sourceNoteRu}
+        {pickLocale(isKy, c.sourceNoteRu, c.sourceNoteKy)}
       </p>
 
       <div
@@ -48,7 +51,7 @@ export function CourtContactsBlock({
         )}
       >
         <a
-          href={`tel:${COURT_CONTACTS.trustPhoneTel}`}
+          href={`tel:${c.trustPhoneTel}`}
           className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 transition hover:border-court-blue/40"
         >
           <Phone className="mt-0.5 h-4 w-4 shrink-0 text-court-blue" />
@@ -57,7 +60,7 @@ export function CourtContactsBlock({
               {isKy ? "Ишеним телефону" : "Телефон доверия"}
             </div>
             <div className="font-semibold tabular-nums text-court-navy">
-              {COURT_CONTACTS.trustPhone}
+              {c.trustPhone}
             </div>
           </div>
         </a>
@@ -68,12 +71,10 @@ export function CourtContactsBlock({
               {isKy ? "Дарек" : "Адрес"}
             </div>
             <div className="text-sm font-medium text-court-navy">
-              {isKy ? COURT_CONTACTS.addressKy : COURT_CONTACTS.addressRu}
+              {pickLocale(isKy, c.addressRu, c.addressKy)}
             </div>
             <div className="mt-0.5 text-xs text-slate-500">
-              {isKy
-                ? COURT_CONTACTS.receptionOfficeKy
-                : COURT_CONTACTS.receptionOfficeRu}
+              {pickLocale(isKy, c.receptionOfficeRu, c.receptionOfficeKy)}
             </div>
           </div>
         </div>
@@ -85,46 +86,38 @@ export function CourtContactsBlock({
             <thead>
               <tr>
                 <th className="!px-2 !py-2">№</th>
-                <th className="!px-2 !py-2">
-                  {isKy ? "ФИО" : "ФИО"}
-                </th>
+                <th className="!px-2 !py-2">{isKy ? "ФИО" : "ФИО"}</th>
                 <th className="!px-2 !py-2">
                   {isKy ? "Кызматы" : "Должность"}
                 </th>
-                <th className="!px-2 !py-2">
-                  {isKy ? "Күн" : "День"}
-                </th>
-                <th className="!px-2 !py-2">
-                  {isKy ? "Убакыт" : "Время"}
-                </th>
+                <th className="!px-2 !py-2">{isKy ? "Күн" : "День"}</th>
+                <th className="!px-2 !py-2">{isKy ? "Убакыт" : "Время"}</th>
               </tr>
             </thead>
             <tbody>
-              {LEADERSHIP_RECEPTION_SCHEDULE.map((row, i) => (
+              {schedule.map((row, i) => (
                 <tr key={row.id}>
                   <td className="!px-2 !py-2 font-mono text-xs text-slate-500">
                     {i + 1}
                   </td>
                   <td className="!px-2 !py-2 text-sm font-medium">
-                    {isKy ? row.fullNameKy : row.fullNameRu}
+                    {pickLocale(isKy, row.fullNameRu, row.fullNameKy)}
                   </td>
                   <td className="!px-2 !py-2 text-xs text-slate-600">
-                    {isKy ? row.positionKy : row.positionRu}
+                    {pickLocale(isKy, row.positionRu, row.positionKy)}
                   </td>
                   <td className="!px-2 !py-2 text-sm">
-                    {isKy ? row.weekdayKy : row.weekdayRu}
+                    {pickLocale(isKy, row.weekdayRu, row.weekdayKy)}
                   </td>
                   <td className="!px-2 !py-2 text-xs tabular-nums text-slate-700">
-                    {isKy ? row.timeKy : row.timeRu}
+                    {pickLocale(isKy, row.timeRu, row.timeKy)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="mt-2 text-[11px] text-slate-400">
-            {isKy
-              ? "Алдын ала жазылуу — № 111 кабинетте (1-кабат)."
-              : "Предварительная запись производится в кабинете № 111 (1 этаж)."}
+            {pickLocale(isKy, c.scheduleFootnoteRu, c.scheduleFootnoteKy)}
           </p>
         </div>
       )}

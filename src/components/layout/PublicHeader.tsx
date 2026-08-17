@@ -8,29 +8,30 @@ import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
 import { LangSwitch } from "@/components/ui/LangSwitch";
 import { EmblemKR } from "@/components/brand/Emblem";
+import { useStore } from "@/lib/store";
+import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
 
 export function PublicHeader() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isKy = lang === "ky";
+  const { state } = useStore();
+  const sc = mergeServiceContent(state.serviceContent);
+  const org = pickLocale(isKy, sc.orgNameRu, sc.orgNameKy) || t.orgName;
+  const app = pickLocale(isKy, sc.appNameRu, sc.appNameKy) || t.appName;
+  const cta = pickLocale(isKy, sc.navBookCtaRu, sc.navBookCtaKy) || t.nav.bookCta;
 
-  /** Опросник судов — отдельный opros.sot.kg. Оценка приёма/записи — важная часть сервиса. */
-  const links = [
-    { href: "/", label: t.nav.home },
-    { href: "/book", label: t.nav.book },
-    { href: "/my-appointment", label: t.nav.myAppointment },
-    { href: "/feedback", label: t.nav.feedback },
-    { href: "/rules", label: t.footer.rules },
-    { href: "/process", label: `${t.footer.process} · демо` },
-  ];
+  const links = sc.headerNav.map((l) => ({
+    href: l.href,
+    label: pickLocale(isKy, l.labelRu, l.labelKy),
+  }));
 
   return (
     <header className="no-print sticky top-0 z-40 border-b border-court-line bg-white">
       <div className="border-b border-court-line bg-court-mist">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-1.5 text-xs text-court-muted md:px-6">
-          <span className="truncate font-medium text-court-ink">
-            {t.orgName}
-          </span>
+          <span className="truncate font-medium text-court-ink">{org}</span>
           <LangSwitch />
         </div>
       </div>
@@ -40,10 +41,10 @@ export function PublicHeader() {
           <EmblemKR size={44} priority />
           <div className="min-w-0">
             <div className="line-clamp-2 text-[11px] font-semibold leading-snug text-court-navy sm:text-xs">
-              {t.orgName}
+              {org}
             </div>
             <div className="truncate text-sm font-medium leading-snug text-court-ink">
-              {t.appName}
+              {app}
             </div>
           </div>
         </Link>
@@ -53,7 +54,7 @@ export function PublicHeader() {
             href="/book"
             className="btn-primary hidden !py-1.5 !text-sm sm:inline-flex"
           >
-            {t.nav.bookCta}
+            {cta}
           </Link>
           <button
             type="button"

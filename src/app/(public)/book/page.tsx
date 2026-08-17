@@ -10,18 +10,16 @@ import {
   Scale,
 } from "lucide-react";
 import { SlotPicker } from "@/components/booking/SlotPicker";
+import { VisitTicket } from "@/components/booking/VisitTicket";
 import { WizardSteps } from "@/components/ui/WizardSteps";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import type { AppealCategory } from "@/lib/types";
-import { formatDateRu } from "@/lib/slots";
 import {
   APPLICANT_TYPES,
-  COURT_CONTACTS,
   REGIONS_KR,
-  RECEPTION_TARGETS,
 } from "@/lib/constants";
 import {
   BOOKING_RULES,
@@ -33,7 +31,8 @@ import {
   type EligibilityNode,
   type RefusalMessage,
 } from "@/lib/eligibility";
-import { defaultServiceContent } from "@/lib/serviceContent";
+import { bookableTargets } from "@/lib/targets";
+import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
 
 /**
  * Запись: правила + допуск (KZ) + правдоподобные поля (UX УЗ) + слоты 20 мин (КР).
@@ -44,7 +43,7 @@ export default function BookPage() {
   const { t, lang } = useI18n();
   const isKy = lang === "ky";
 
-  const sc = state.serviceContent ?? defaultServiceContent();
+  const sc = mergeServiceContent(state.serviceContent);
   const rules = sc.rules ?? BOOKING_RULES;
   const eligibilityTree = (state.eligibilityTree?.length
     ? state.eligibilityTree
@@ -107,6 +106,8 @@ export default function BookPage() {
   const [description, setDescription] = useState("");
   const [companion, setCompanion] = useState("");
   const [companionPhone, setCompanionPhone] = useState("");
+  const [companion2, setCompanion2] = useState("");
+  const [companion2Phone, setCompanion2Phone] = useState("");
   const [expectedResult, setExpectedResult] = useState("");
 
   const [date, setDate] = useState("");
@@ -120,6 +121,7 @@ export default function BookPage() {
     date: string;
     slotStart: string;
     slotEnd: string;
+    targetId: string;
   } | null>(null);
 
   const pathNodes = resolvePath(path, eligibilityTree);
@@ -309,10 +311,6 @@ export default function BookPage() {
       APPLICANT_TYPES.find((r) => r.id === applicantType)?.[
         isKy ? "ky" : "ru"
       ] || applicantType;
-    const targetLabel =
-      RECEPTION_TARGETS.find((r) => r.id === target)?.[
-        isKy ? "ky" : "ru"
-      ] || target;
 
     const addrParts = [
       regionLabel,
@@ -327,35 +325,21 @@ export default function BookPage() {
       .filter(Boolean)
       .join(", ");
 
-    const extra = [
-      `Заявитель: ${fullName}`,
-      gender
-        ? `Пол: ${gender === "m" ? "мужской" : gender === "f" ? "женский" : gender}`
-        : "",
-      birthDate.trim() ? `Дата рождения: ${birthDate.trim()}` : "",
-      `Тип заявителя: ${typeLabel}`,
-      orgName.trim() ? `Организация: ${orgName.trim()}` : "",
-      orgInn.trim() ? `ИНН / рег. номер: ${orgInn.trim()}` : "",
-      position.trim() ? `Должность: ${position.trim()}` : "",
-      citizenship
-        ? `Гражданство: ${citizenship === "kg" ? "Кыргызская Республика" : citizenship === "other" ? "иное" : citizenship}`
-        : "",
-      docNumber.trim()
-        ? `Документ: ${docType} № ${docNumber.trim()}`
-        : "",
-      `Телефон: ${phone.trim()}`,
-      phoneAlt.trim() ? `Доп. телефон: ${phoneAlt.trim()}` : "",
-      email.trim() ? `E-mail: ${email.trim()}` : "",
-      `Адрес (${residenceType === "actual" ? "фактический" : "по регистрации"}): ${addrParts}`,
-      `К кому: ${targetLabel}`,
+    const companions = [
       companion.trim()
-        ? `Сопровождающий: ${companion.trim()}${companionPhone.trim() ? `, тел. ${companionPhone.trim()}` : ""}`
-        : "",
-      expectedResult.trim()
-        ? `Ожидаемый результат: ${expectedResult.trim()}`
-        : "",
-      `Допуск: ${pathNote}`,
-      `Содержание обращения:\n${description.trim()}`,
+        ? { fullName: companion.trim(), phone: companionPhone.trim() }
+        : null,
+      companion2.trim()
+        ? { fullName: companion2.trim(), phone: companion2Phone.trim() }
+        : null,
+    ].filter((c): c is { fullName: string; phone: string } => Boolean(c));
+
+    const appendix = [
+      addrParts && `Адрес: ${addrParts}`,
+      typeLabel && `Тип заявителя: ${typeLabel}`,
+      orgName.trim() && `Организация: ${orgName.trim()}`,
+      expectedResult.trim() && `Ожидаемый результат: ${expectedResult.trim()}`,
+      pathNote && `Допуск: ${pathNote}`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -366,10 +350,12 @@ export default function BookPage() {
       email,
       topic,
       category,
-      description: extra,
+      description: [description.trim(), appendix].filter(Boolean).join("\n\n"),
       date,
       slotStart,
       slotEnd,
+      targetId: target,
+      companions,
     });
     if (!res.ok) {
       setError(res.error);
@@ -381,6 +367,7 @@ export default function BookPage() {
       date: res.appointment.date,
       slotStart: res.appointment.slotStart,
       slotEnd: res.appointment.slotEnd,
+      targetId: res.appointment.targetId,
     });
   }
 
@@ -441,63 +428,41 @@ export default function BookPage() {
   if (result) {
     return (
       <div className="mx-auto max-w-lg px-4 py-12">
-        <div className="card p-6 text-center sm:p-8" id="booking-slip">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-700">
-            <CheckCircle2 className="h-7 w-7" />
+        <div className="mb-4 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-left">
+          <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-sky-700" />
+          <div>
+            <h1 className="text-lg font-semibold text-court-navy">
+              {t.book.success}
+            </h1>
+            <p className="mt-1 text-sm text-sky-950">{t.book.successLead}</p>
           </div>
-          <h1 className="text-xl font-semibold text-court-navy">
-            {t.book.success}
-          </h1>
-          <p className="mt-2 text-sm text-court-muted">{t.book.successLead}</p>
-          <div className="mt-5 grid gap-3 rounded-lg bg-court-mist p-4 text-left text-sm sm:grid-cols-2">
-            <div>
-              <div className="text-xs uppercase text-court-muted">
-                {t.book.code}
-              </div>
-              <div className="font-mono text-lg font-bold text-court-navy">
-                {result.code}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs uppercase text-court-muted">
-                {t.book.pin}
-              </div>
-              <div className="font-mono text-lg font-bold text-court-navy">
-                {result.pin}
-              </div>
-            </div>
-            <div className="sm:col-span-2">
-              <div className="text-xs uppercase text-court-muted">
-                {t.book.datetime}
-              </div>
-              <div className="font-semibold text-court-navy">
-                {formatDateRu(result.date)}, {result.slotStart} –{" "}
-                {result.slotEnd}
-              </div>
-            </div>
-            <div className="sm:col-span-2">
-              <div className="text-xs uppercase text-court-muted">
-                {t.book.applicant}
-              </div>
-              <div className="font-semibold">{fullName}</div>
-            </div>
-          </div>
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <button
-              type="button"
-              className="btn-outline"
-              onClick={() => window.print()}
-            >
-              <Printer className="h-4 w-4" />
-              {t.book.printSlip}
-            </button>
-            <Link href="/my-appointment" className="btn-primary">
-              {t.book.manage}
-            </Link>
-            <Link href="/" className="btn-outline">
-              {t.book.toHome}
-            </Link>
-          </div>
+        </div>
+        <VisitTicket
+          code={result.code}
+          pin={result.pin}
+          fullName={fullName}
+          date={result.date}
+          slotStart={result.slotStart}
+          slotEnd={result.slotEnd}
+          targetId={result.targetId}
+          pending
+          isKy={isKy}
+        />
+        <div className="mt-6 flex flex-wrap justify-center gap-2 no-print">
+          <button
+            type="button"
+            className="btn-outline"
+            onClick={() => window.print()}
+          >
+            <Printer className="h-4 w-4" />
+            {t.book.printSlip}
+          </button>
+          <Link href="/my-appointment" className="btn-primary">
+            {t.book.manage}
+          </Link>
+          <Link href="/" className="btn-outline">
+            {t.book.toHome}
+          </Link>
         </div>
       </div>
     );
@@ -1010,19 +975,28 @@ export default function BookPage() {
                 <select
                   className="input"
                   value={target}
-                  onChange={(e) => setTarget(e.target.value)}
+                  onChange={(e) => {
+                    setTarget(e.target.value);
+                    setDate("");
+                    setSlotStart("");
+                    setSlotEnd("");
+                  }}
                 >
-                  {RECEPTION_TARGETS.map((r) => (
+                  {bookableTargets(sc).map((r) => (
                     <option key={r.id} value={r.id}>
-                      {isKy ? r.ky : r.ru}
+                      {pickLocale(isKy, r.bookLabelRu, r.bookLabelKy)}
                     </option>
                   ))}
                 </select>
                 <p className="mt-1.5 text-[11px] leading-relaxed text-court-muted">
-                  {L(
-                    `График и ФИО — с раздела «График приёма граждан» (sot.kg). Предварительная запись: ${COURT_CONTACTS.receptionOfficeRu}. Телефон доверия: ${COURT_CONTACTS.trustPhone}.`,
-                    `График жана ФИО — «Жарандарды кабыл алуу графиги» (sot.kg). Алдын ала жазылуу: ${COURT_CONTACTS.receptionOfficeKy}. Ишеним телефону: ${COURT_CONTACTS.trustPhone}.`
-                  )}{" "}
+                  {pickLocale(isKy, sc.bookTargetHintRu, sc.bookTargetHintKy)}{" "}
+                  {pickLocale(
+                    isKy,
+                    sc.contacts.receptionOfficeRu,
+                    sc.contacts.receptionOfficeKy
+                  )}
+                  . {isKy ? "Ишеним телефону" : "Телефон доверия"}:{" "}
+                  {sc.contacts.trustPhone}.{" "}
                   <Link href="/rules" className="text-court-blue hover:underline">
                     {L("Подробнее", "Толугураак")}
                   </Link>
@@ -1083,8 +1057,8 @@ export default function BookPage() {
                 <div>
                   <label className="label">
                     {L(
-                      "Сопровождающее лицо (ФИО, не более одного)",
-                      "Коштоочу (ФИО, бир адам)"
+                      "Сопровождающий 1 (ФИО)",
+                      "Коштоочу 1 (ФИО)"
                     )}
                   </label>
                   <input
@@ -1095,12 +1069,36 @@ export default function BookPage() {
                 </div>
                 <div>
                   <label className="label">
-                    {L("Телефон сопровождающего", "Коштоочунун телефону")}
+                    {L("Телефон сопровождающего 1", "Коштоочу 1 телефону")}
                   </label>
                   <input
                     className="input"
                     value={companionPhone}
                     onChange={(e) => setCompanionPhone(e.target.value)}
+                    placeholder="+996 …"
+                  />
+                </div>
+                <div>
+                  <label className="label">
+                    {L(
+                      "Сопровождающий 2 (ФИО, не более двух)",
+                      "Коштоочу 2 (эки адамдан көп эмес)"
+                    )}
+                  </label>
+                  <input
+                    className="input"
+                    value={companion2}
+                    onChange={(e) => setCompanion2(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label">
+                    {L("Телефон сопровождающего 2", "Коштоочу 2 телефону")}
+                  </label>
+                  <input
+                    className="input"
+                    value={companion2Phone}
+                    onChange={(e) => setCompanion2Phone(e.target.value)}
                     placeholder="+996 …"
                   />
                 </div>
@@ -1153,6 +1151,7 @@ export default function BookPage() {
                   setSlotStart(s);
                   setSlotEnd(e);
                 }}
+                targetId={target}
               />
             </div>
           )}

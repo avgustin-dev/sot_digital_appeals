@@ -98,5 +98,5 @@ npm run dev:alt    # :3005
 npm run build
 ```
 
-Демо: `priemnaya/priem123`, запись `VS-2026-1001` / `4821`  
+Демо: `predsedatel/vs2026` (полный обзор), `priemnaya/priem123`, запись `VS-2026-1001` / `4821`  
 Админ: http://localhost:3000/admin

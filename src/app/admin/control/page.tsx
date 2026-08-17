@@ -13,6 +13,7 @@ import { StageBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Collapsible } from "@/components/ui/Collapsible";
+import { AdminHeading } from "@/components/staff/AdminHeading";
 import { ClipboardCheck } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -160,16 +161,14 @@ export default function ControlPage() {
           { label: t.crumbs.control },
         ]}
       />
-      <div>
-        <h1 className="section-title">
-          {isKy ? "Көзөмөл поручений" : "Контроль поручений"}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {isKy
-            ? "Тапшырма → журнал → жооп. Кечигүүлөр бөлүнгөн."
-            : "Поручение → журнал хода → ответ гражданину. Просроченные выделены."}
-        </p>
-      </div>
+      <AdminHeading
+        title={isKy ? "Тапшырмалар" : "Поручения"}
+        lead={
+          isKy
+            ? "Журнал, мөөнөт, жооп жаранга."
+            : "Журнал исполнения, срок, ответ заявителю."
+        }
+      />
 
       <div className="grid gap-2 sm:grid-cols-4">
         {(

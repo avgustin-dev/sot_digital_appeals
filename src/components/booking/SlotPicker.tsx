@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   addMonths,
   eachDayOfInterval,
@@ -25,7 +26,7 @@ import {
   weekdayRu,
 } from "@/lib/slots";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { resolveTargetWindow, targetShort } from "@/lib/targets";
 
 /**
  * Строгий календарь записи (гос.стиль, удобный):
@@ -37,12 +38,14 @@ export function SlotPicker({
   onDateChange,
   onSlotChange,
   excludeAppointmentId,
+  targetId,
 }: {
   date: string;
   slotStart: string;
   onDateChange: (d: string) => void;
   onSlotChange: (start: string, end: string) => void;
   excludeAppointmentId?: string;
+  targetId?: string;
 }) {
   const { state, ready } = useStore();
   const { t, lang } = useI18n();
@@ -51,8 +54,15 @@ export function SlotPicker({
 
   const availableSet = useMemo(() => {
     if (!ready) return new Set<string>();
-    return new Set(listAvailableDates(state.calendar));
-  }, [ready, state.calendar]);
+    return new Set(
+      listAvailableDates(
+        state.calendar,
+        new Date(),
+        targetId,
+        state.serviceContent
+      )
+    );
+  }, [ready, state.calendar, state.serviceContent, targetId]);
 
   const initialMonth = date
     ? startOfMonth(parseISO(date))
@@ -66,10 +76,12 @@ export function SlotPicker({
             date,
             state.calendar,
             state.appointments,
-            excludeAppointmentId
+            excludeAppointmentId,
+            targetId,
+            state.serviceContent
           )
         : [],
-    [date, state.calendar, state.appointments, excludeAppointmentId, ready]
+    [date, state.calendar, state.appointments, state.serviceContent, excludeAppointmentId, ready, targetId]
   );
 
   const gridDays = useMemo(() => {
@@ -78,6 +90,11 @@ export function SlotPicker({
     return eachDayOfInterval({ start, end });
   }, [month]);
 
+  const win = resolveTargetWindow(
+    targetId || "reception",
+    state.calendar,
+    state.serviceContent
+  );
   const today = startOfDay(new Date());
   const monthLabel = `${c.months[month.getMonth()]} ${month.getFullYear()}`;
   const selectedSlot = slots.find((s) => s.start === slotStart);
@@ -86,7 +103,7 @@ export function SlotPicker({
     const key = format(d, "yyyy-MM-dd");
     if (date === key) return "selected";
     if (isBefore(d, today)) return "past";
-    if (availableSet.has(key) && isReceptionDate(key, state.calendar))
+    if (availableSet.has(key) && isReceptionDate(key, state.calendar, targetId, state.serviceContent))
       return "open";
     return "closed";
   }
@@ -232,10 +249,15 @@ export function SlotPicker({
           </div>
 
           <p className="mt-4 border-t border-court-line pt-3 text-xs text-court-muted">
+            {targetId ? (
+              <>
+                {isKy ? "Кимге" : "К кому"}:{" "}
+                {targetShort(targetId, isKy, state.serviceContent)}.{" "}
+              </>
+            ) : null}
             {isKy ? "Иш убактысы" : "Окно приёма"}:{" "}
-            {minutesToTime(state.calendar.dayStartMinutes)} –{" "}
-            {minutesToTime(state.calendar.dayEndMinutes)}. 20{" "}
-            {isKy ? "мүн. + 5 мүн. тыныгуу" : "мин + 5 мин перерыв"}.
+            {minutesToTime(win.startMinutes)} – {minutesToTime(win.endMinutes)}.
+            20 {isKy ? "мүн. + 5 мүн. тыныгуу" : "мин + 5 мин перерыв"}.
           </p>
         </div>
       </div>

@@ -7,7 +7,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { Collapsible } from "@/components/ui/Collapsible";
 import { useI18n } from "@/lib/i18n";
-import { defaultServiceContent } from "@/lib/serviceContent";
+import { mergeServiceContent } from "@/lib/serviceContent";
 import { BOOKING_RULES } from "@/lib/eligibility";
 import { CourtContactsBlock } from "@/components/ui/CourtContactsBlock";
 
@@ -20,7 +20,7 @@ export default function RulesPage() {
   const { t, lang } = useI18n();
   const isKy = lang === "ky";
   const cal = state.calendar;
-  const sc = state.serviceContent ?? defaultServiceContent();
+  const sc = mergeServiceContent(state.serviceContent);
   const rules = sc.rules ?? BOOKING_RULES;
 
   if (!ready) {

@@ -5,29 +5,46 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { StageBadge } from "@/components/ui/Badge";
-import { CATEGORY_LABELS, STAGE_LABELS } from "@/lib/constants";
-import type { AppealStage } from "@/lib/types";
+import { StageBadge, StatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { AdminHeading } from "@/components/staff/AdminHeading";
 import { FileText } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { targetShort } from "@/lib/targets";
 
 export default function AppealsListPage() {
   const { state } = useStore();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isKy = lang === "ky";
   const router = useRouter();
   const [q, setQ] = useState("");
-  const [stage, setStage] = useState<AppealStage | "all">("all");
+  const [bucket, setBucket] = useState<
+    "all" | "pending" | "prep" | "reception" | "control" | "closed"
+  >("all");
 
-  function pinFor(appointmentId: string) {
-    return state.appointments.find((x) => x.id === appointmentId)?.pin ?? "—";
+  function appointmentOf(appointmentId: string) {
+    return state.appointments.find((x) => x.id === appointmentId);
   }
 
   const list = useMemo(() => {
     return state.appeals
       .filter((a) => {
-        if (stage !== "all" && a.stage !== stage) return false;
+        const apt = state.appointments.find((x) => x.id === a.appointmentId);
+        if (bucket === "pending") return apt?.status === "pending_review";
+        if (bucket === "prep")
+          return (
+            apt?.status !== "pending_review" &&
+            ["registered", "under_review"].includes(a.stage)
+          );
+        if (bucket === "reception") return a.stage === "ready_for_reception";
+        if (bucket === "control") return a.stage === "in_control";
+        if (bucket === "closed")
+          return ["answered", "closed", "cancelled"].includes(a.stage);
+        if (!q.trim()) return true;
+        return true;
+      })
+      .filter((a) => {
         if (!q.trim()) return true;
         const s = q.toLowerCase();
         const pin = state.appointments
@@ -42,7 +59,7 @@ export default function AppealsListPage() {
         );
       })
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [state.appeals, state.appointments, q, stage]);
+  }, [state.appeals, state.appointments, q, bucket]);
 
   return (
     <div className="space-y-6">
@@ -52,54 +69,64 @@ export default function AppealsListPage() {
           { label: t.crumbs.appeals },
         ]}
       />
-      <div>
-        <h1 className="section-title">{t.admin.appeals}</h1>
-        <p className="mt-1 text-court-muted">
-          Реестр карточек: регистрация → анализ → приём → контроль → закрытие.
-        </p>
-      </div>
+      <AdminHeading
+        title={isKy ? "Карточкалар" : "Карточки"}
+        lead={
+          isKy
+            ? "Реестр. Сапты басыңыз — карточка ачылат."
+            : "Реестр обращений. Нажмите строку — откроется карточка."
+        }
+      />
 
-      <div className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-end">
-        <div className="flex-1">
-          <label className="label" htmlFor="q">
-            Поиск
-          </label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-court-muted" />
-            <input
-              id="q"
-              className="input pl-9"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Код, ФИО, тема, телефон"
-            />
-          </div>
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-1.5">
+          {(
+            [
+              ["all", isKy ? "Баары" : "Все"],
+              ["pending", isKy ? "Өтүнмөлөр" : "Заявки"],
+              ["prep", isKy ? "Даярдоо" : "Подготовка"],
+              ["reception", isKy ? "Кабыл алуу" : "Приём"],
+              ["control", isKy ? "Тапшырмалар" : "Поручения"],
+              ["closed", isKy ? "Жабык" : "Закрытые"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setBucket(id)}
+              className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                bucket === id
+                  ? "border-court-navy bg-court-navy text-white"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
-        <div className="sm:w-64">
-          <label className="label" htmlFor="stage">
-            Этап
-          </label>
-          <select
-            id="stage"
-            className="input"
-            value={stage}
-            onChange={(e) => setStage(e.target.value as AppealStage | "all")}
-          >
-            <option value="all">Все этапы</option>
-            {(Object.keys(STAGE_LABELS) as AppealStage[]).map((k) => (
-              <option key={k} value={k}>
-                {STAGE_LABELS[k]}
-              </option>
-            ))}
-          </select>
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-court-muted" />
+          <input
+            id="q"
+            className="input pl-9"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={
+              isKy ? "Код, ФИО, тема, телефон" : "Код, ФИО, тема, телефон"
+            }
+          />
         </div>
       </div>
 
       {list.length === 0 ? (
         <EmptyState
           icon={FileText}
-          title="Ничего не найдено"
-          description="Измените фильтр или дождитесь новых записей граждан."
+          title={isKy ? "Табылган жок" : "Сведения не найдены"}
+          description={
+            isKy
+              ? "Издөө шарттарын өзгөртүңүз."
+              : "Измените условия поиска."
+          }
         />
       ) : (
         <div className="page-enter overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -107,16 +134,19 @@ export default function AppealsListPage() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Рег. код</th>
+                  <th>{isKy ? "Каттоо коду" : "Рег. код"}</th>
                   <th>PIN</th>
-                  <th>Заявитель</th>
-                  <th>Тема обращения</th>
-                  <th>Категория</th>
-                  <th>Этап</th>
+                  <th>{isKy ? "Кайрылуучу" : "Заявитель"}</th>
+                  <th>{isKy ? "Тема" : "Тема обращения"}</th>
+                  <th>{isKy ? "Адресат" : "Адресат"}</th>
+                  <th>{isKy ? "Жазылуу" : "Статус записи"}</th>
+                  <th>{isKy ? "Этап" : "Этап"}</th>
                 </tr>
               </thead>
               <tbody>
-                {list.map((a) => (
+                {list.map((a) => {
+                  const apt = appointmentOf(a.appointmentId);
+                  return (
                   <tr
                     key={a.id}
                     className="cursor-pointer border-t border-court-line hover:bg-court-mist/50"
@@ -131,15 +161,21 @@ export default function AppealsListPage() {
                         {a.code}
                       </Link>
                       {a.previousAppealIds.length > 0 && (
-                        <div className="text-[11px] text-amber-700">повторное</div>
+                        <div className="text-[11px] text-amber-700">
+                          {isKy ? "кайталанма" : "повторное"}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-3">
                       <span
                         className="rounded bg-slate-100 px-2 py-0.5 font-mono text-sm font-bold tracking-wider text-slate-900"
-                        title="PIN для «Моя запись» (перенос/отмена)"
+                        title={
+                          isKy
+                            ? "PIN — «Менин жазылууум»"
+                            : "PIN — раздел «Моя запись»"
+                        }
                       >
-                        {pinFor(a.appointmentId)}
+                        {apt?.pin ?? "—"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
@@ -152,13 +188,17 @@ export default function AppealsListPage() {
                       {a.topic}
                     </td>
                     <td className="px-4 py-3 text-court-muted">
-                      {CATEGORY_LABELS[a.category]}
+                      {apt ? targetShort(apt.targetId, isKy, state.serviceContent) : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {apt ? <StatusBadge status={apt.status} /> : "—"}
                     </td>
                     <td className="px-4 py-3">
                       <StageBadge stage={a.stage} />
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

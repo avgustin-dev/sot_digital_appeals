@@ -10,7 +10,7 @@ import { useI18n } from "@/lib/i18n";
 import { LangSwitch } from "@/components/ui/LangSwitch";
 
 export default function AdminLoginPage() {
-  const { login, currentUser, ready } = useStore();
+  const { login, currentUser, ready, state } = useStore();
   const router = useRouter();
   const { lang } = useI18n();
   const isKy = lang === "ky";
@@ -18,9 +18,20 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  function homePath(user: { role: string; login: string }) {
+    if (user.login === "predsedatel" || user.role === "admin") return "/admin";
+    if (user.role === "responsible") return "/admin/control";
+    if (user.role === "leadership") return "/admin/reception";
+    const pending = state.appointments.some(
+      (a) => a.status === "pending_review"
+    );
+    if (user.role === "reception" && pending) return "/admin/inbox";
+    return "/admin";
+  }
+
   useEffect(() => {
-    if (ready && currentUser) router.replace("/admin");
-  }, [ready, currentUser, router]);
+    if (ready && currentUser) router.replace(homePath(currentUser));
+  }, [ready, currentUser, router, state.appointments]);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +40,6 @@ export default function AdminLoginPage() {
       setError(res.error || (isKy ? "Кирүү катасы" : "Ошибка входа"));
       return;
     }
-    router.push("/admin");
   }
 
   return (
@@ -102,17 +112,43 @@ export default function AdminLoginPage() {
               </button>
             </div>
 
-            <div className="mt-6 border-t border-slate-100 pt-4 text-xs text-slate-500">
+            <div className="mt-6 border-t border-slate-100 pt-4 text-xs text-slate-600">
               <div className="mb-2 font-semibold text-slate-800">
-                {isKy
-                  ? "Демо аккаунттар"
-                  : "Демонстрационные учётные записи"}
+                {isKy ? "Каттоо эсептери (таанышуу үчүн)" : "Учётные записи (для ознакомления)"}
               </div>
-              <ul className="space-y-1 font-mono text-slate-600">
-                <li>priemnaya / priem123</li>
-                <li>rukovodstvo / sud2026</li>
-                <li>otvet1 / otvet123</li>
-                <li>admin / admin123</li>
+              <ul className="space-y-2">
+                <li>
+                  <div className="text-slate-500">
+                    {isKy
+                      ? "Төрага — бардык бөлүмдөр"
+                      : "Председатель — полный обзор"}
+                  </div>
+                  <div className="font-mono">predsedatel / vs2026</div>
+                </li>
+                <li>
+                  <div className="text-slate-500">
+                    {isKy ? "Жарандар менен иштөө бөлүмү" : "Отдел по работе с гражданами"}
+                  </div>
+                  <div className="font-mono">priemnaya / priem123</div>
+                </li>
+                <li>
+                  <div className="text-slate-500">
+                    {isKy ? "Жетекчилик (кабыл алуу)" : "Руководство (приём)"}
+                  </div>
+                  <div className="font-mono">rukovodstvo / sud2026</div>
+                </li>
+                <li>
+                  <div className="text-slate-500">
+                    {isKy ? "Жооптуу аткаруучу" : "Ответственный исполнитель"}
+                  </div>
+                  <div className="font-mono">otvet1 / otvet123</div>
+                </li>
+                <li>
+                  <div className="text-slate-500">
+                    {isKy ? "Администратор" : "Администратор"}
+                  </div>
+                  <div className="font-mono">admin / admin123</div>
+                </li>
               </ul>
             </div>
           </form>
@@ -122,7 +158,7 @@ export default function AdminLoginPage() {
               href="/"
               className="font-medium text-court-blue hover:underline"
             >
-              ← {isKy ? "Жарандардын бөлүмү" : "Публичный сервис"}
+              ← {isKy ? "Коомдук бөлүм" : "Публичный раздел"}
             </Link>
           </div>
         </div>

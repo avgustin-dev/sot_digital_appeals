@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { SlotPicker } from "@/components/booking/SlotPicker";
+import { VisitTicket } from "@/components/booking/VisitTicket";
 import { StatusBadge } from "@/components/ui/Badge";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
@@ -145,7 +146,12 @@ export default function MyAppointmentPage() {
   }
 
   const canManage =
-    apt && apt.status !== "cancelled" && apt.status !== "completed";
+    apt &&
+    apt.status !== "cancelled" &&
+    apt.status !== "completed" &&
+    apt.status !== "rejected";
+  const canReschedule =
+    canManage && apt.status !== "pending_review";
 
   const modules = [
     {
@@ -164,7 +170,7 @@ export default function MyAppointmentPage() {
       id: "reschedule" as const,
       label: isKy ? "Которуу" : "Перенос",
       icon: CalendarClock,
-      show: !!canManage,
+      show: !!canReschedule,
     },
     {
       id: "history" as const,
@@ -289,6 +295,19 @@ export default function MyAppointmentPage() {
             </button>
             {" / "}
             <span className="font-mono font-semibold">4821</span>
+            {" · "}
+            <button
+              type="button"
+              className="font-mono font-semibold text-court-blue"
+              onClick={() => {
+                setCode("VS-2026-1003");
+                setPin("5502");
+              }}
+            >
+              VS-2026-1003
+            </button>
+            {" / "}
+            <span className="font-mono font-semibold">5502</span>
           </div>
         </aside>
 
@@ -357,6 +376,33 @@ export default function MyAppointmentPage() {
           )}
 
           {apt && panel === "details" && (
+            <div className="space-y-4">
+              {apt.status === "pending_review" && (
+                <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+                  {isKy
+                    ? "Өтүнмө кароодо. Жазылуу ырасталгандан кийин гана күчүнө кирет. Жылдыруу ырастоодон кийин жеткиликтүү."
+                    : "Заявка находится на рассмотрении. Запись вступает в силу после подтверждения. Перенос доступен после подтверждения."}
+                </div>
+              )}
+              {apt.status === "rejected" && (
+                <div className="rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+                  {isKy
+                    ? "Өтүнмө ырасталган жок."
+                    : "В записи отказано."}
+                  {apt.reviewNote ? ` ${apt.reviewNote}` : ""}
+                </div>
+              )}
+              <VisitTicket
+                code={apt.code}
+                pin={apt.pin}
+                fullName={apt.fullName}
+                date={apt.date}
+                slotStart={apt.slotStart}
+                slotEnd={apt.slotEnd}
+                targetId={apt.targetId}
+                pending={apt.status === "pending_review"}
+                isKy={isKy}
+              />
             <div className="card p-5 sm:p-6" id="my-slip">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
@@ -409,6 +455,7 @@ export default function MyAppointmentPage() {
               <div className="mt-5 flex flex-wrap gap-3 border-t border-court-line pt-5 no-print">
                 {canManage && (
                   <>
+                    {canReschedule && (
                     <button
                       type="button"
                       className="btn-primary"
@@ -417,6 +464,7 @@ export default function MyAppointmentPage() {
                       <CalendarClock className="h-4 w-4" />
                       {t.my.reschedule}
                     </button>
+                    )}
                     <button
                       type="button"
                       className="btn-danger"
@@ -445,6 +493,7 @@ export default function MyAppointmentPage() {
                   </button>
                 )}
               </div>
+            </div>
             </div>
           )}
 
@@ -499,7 +548,7 @@ export default function MyAppointmentPage() {
             </div>
           )}
 
-          {apt && panel === "reschedule" && canManage && (
+          {apt && panel === "reschedule" && canReschedule && (
             <form onSubmit={onReschedule} className="card space-y-4 p-5 sm:p-6">
               <h2 className="text-xl font-semibold text-court-ink">
                 {t.my.rescheduleTitle}
@@ -517,6 +566,7 @@ export default function MyAppointmentPage() {
                   setSlotEnd(e);
                 }}
                 excludeAppointmentId={apt.id}
+                targetId={apt.targetId}
               />
               <div className="flex flex-wrap gap-3">
                 <button

@@ -89,6 +89,11 @@ export default function AdminHelpPage() {
           </li>
           <li>
             {isKy
+              ? "Өтүнмө кароого кабыл алынат. Жазылуу ырасталгандан кийин күчүнө кирет; жаранга билдирүү жөнөтүлөт."
+              : "Заявка принимается к рассмотрению. Запись вступает в силу после подтверждения; заявителю направляется уведомление."}
+          </li>
+          <li>
+            {isKy
               ? "Берилет: каттоо коду (мисалы, VS-2026-1001) жана PIN-код (төрт сан)."
               : "Выдаются: регистрационный код (например, VS-2026-1001) и PIN-код (четыре цифры)."}
           </li>
@@ -211,7 +216,22 @@ export default function AdminHelpPage() {
         <ol className="list-decimal space-y-3 pl-5 text-sm text-slate-700">
           <li>
             <strong>
-              {isKy ? "Каттоо жазылуу" : "Регистрация записи"}
+              {isKy ? "Өтүнмөлөрдү кароо" : "Рассмотрение заявок"}
+            </strong>
+            <br />
+            <Link href="/admin/inbox" className="text-court-blue">
+              {isKy ? "Өтүнмөлөр" : "Заявки на проверке"}
+            </Link>
+            <br />
+            <span className="text-xs text-slate-500">
+              {isKy
+                ? "Ырастоо же баш тартуу. Жазылуу ырасталгандан кийин күчүнө кирет."
+                : "Подтверждение либо отказ. Запись вступает в силу после подтверждения."}
+            </span>
+          </li>
+          <li>
+            <strong>
+              {isKy ? "Каттоо жана карточка" : "Регистрация и карточка"}
             </strong>
             <br />
             <Link href="/admin" className="text-court-blue">
@@ -455,6 +475,24 @@ export default function AdminHelpPage() {
               <tbody className="text-sm">
                 <tr>
                   <td className="border-b border-slate-100 px-3 py-2 font-mono">
+                    predsedatel
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
+                    vs2026
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2">
+                    {isKy
+                      ? "Төрага (leadership)"
+                      : "Председатель (leadership)"}
+                  </td>
+                  <td className="border-b border-slate-100 px-3 py-2 text-xs text-slate-600">
+                    {isKy
+                      ? "Бардык бөлүмдөр: өтүнмөлөр, кабыл алуу, карточкалар, тапшырмалар, мониторинг, справочник"
+                      : "Все разделы: заявки, приём, карточки, поручения, мониторинг, справочник"}
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
                     priemnaya
                   </td>
                   <td className="border-b border-slate-100 px-3 py-2 font-mono">
@@ -675,6 +713,12 @@ export default function AdminHelpPage() {
             {isKy ? "Кызматкерлердин толук аты (демо)" : "ФИО сотрудников (демо)"}
           </p>
           <ul className="list-disc space-y-1 pl-5 text-xs text-slate-600">
+            <li>
+              predsedatel — Сатыев М. А.,{" "}
+              {isKy
+                ? "Жогорку соттун Төрагасы"
+                : "Председатель Верховного суда КР"}
+            </li>
             <li>
               priemnaya — Касымова А. Б.,{" "}
               {isKy ? "башкы адис" : "главный специалист"},{" "}

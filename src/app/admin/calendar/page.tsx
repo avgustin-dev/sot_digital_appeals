@@ -17,8 +17,12 @@ import {
 } from "@/lib/slots";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { AdminHeading } from "@/components/staff/AdminHeading";
+import { ReceptionTabs } from "@/components/staff/ReceptionTabs";
+import { ReviewRequestPanel } from "@/components/staff/ReviewRequestPanel";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/lib/i18n";
+import { targetShort } from "@/lib/targets";
 
 /**
  * Календарь для сотрудников: список записей по дням (не «пустые слоты»).
@@ -49,14 +53,18 @@ export default function StaffCalendarPage() {
   const [err, setErr] = useState(false);
   const [showFree, setShowFree] = useState(false);
 
+  const [reviewId, setReviewId] = useState<string | null>(null);
+
   const dayApts = useMemo(() => {
     return state.appointments
       .filter((a) => a.date === date)
       .sort((a, b) => a.slotStart.localeCompare(b.slotStart));
   }, [state.appointments, date]);
 
-  const activeCount = dayApts.filter((a) => a.status !== "cancelled").length;
-  const cancelledCount = dayApts.filter((a) => a.status === "cancelled").length;
+  const activeCount = dayApts.filter(
+    (a) => a.status !== "cancelled" && a.status !== "rejected"
+  ).length;
+  const pendingCount = dayApts.filter((a) => a.status === "pending_review").length;
 
   function appealId(appointmentId: string) {
     return state.appeals.find((a) => a.appointmentId === appointmentId)?.id;
@@ -91,16 +99,15 @@ export default function StaffCalendarPage() {
           { label: t.crumbs.calendar },
         ]}
       />
-      <div>
-        <h1 className="section-title">
-          {isKy ? "Жазылуулар жана календарь" : "Записи и календарь"}
-        </h1>
-        <p className="mt-1 max-w-2xl text-sm text-slate-500">
-          {isKy
-            ? "Күн боюнча ким жазылган. Басыңыз — карточка. Бош слоттор экинчи планда."
-            : "По дням — кто записан. Нажмите строку — карточка (правка, отмена, статус). Пустые слоты не мешают: они вторичны."}
-        </p>
-      </div>
+      <AdminHeading
+        title={isKy ? "Кабыл алуу" : "Приём"}
+        lead={
+          isKy
+            ? "Күн боюнча тизме. Өтүнмө — ырастоо. Неявка — кабыл алуу күнү."
+            : "Список по дням. Заявка подлежит подтверждению. Неявку отмечают в день приёма."
+        }
+      />
+      <ReceptionTabs isKy={isKy} />
 
       {msg && (
         <div
@@ -118,7 +125,13 @@ export default function StaffCalendarPage() {
       <div className="grid gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
         {dates.map((d) => {
           const n = state.appointments.filter(
-            (a) => a.date === d && a.status !== "cancelled"
+            (a) =>
+              a.date === d &&
+              a.status !== "cancelled" &&
+              a.status !== "rejected"
+          ).length;
+          const p = state.appointments.filter(
+            (a) => a.date === d && a.status === "pending_review"
           ).length;
           return (
             <button
@@ -150,7 +163,8 @@ export default function StaffCalendarPage() {
                   date === d ? "text-white/90" : "text-slate-600"
                 )}
               >
-                {n} {isKy ? "жазылуу" : "запис."}
+                {n} {isKy ? "адам" : "чел."}
+                {p > 0 ? ` · ${p} ${isKy ? "өтүнмө" : "заяв."}` : ""}
               </div>
             </button>
           );
@@ -166,8 +180,8 @@ export default function StaffCalendarPage() {
               </h2>
               <p className="text-xs text-slate-500">
                 {isKy ? "Активдүү" : "Активных"}: {activeCount}
-                {cancelledCount > 0 &&
-                  ` · ${isKy ? "жокко чыгарылган" : "отменено"}: ${cancelledCount}`}
+                {pendingCount > 0 &&
+                  ` · ${isKy ? "текшерүүдө" : "на проверке"}: ${pendingCount}`}
               </p>
             </div>
             <Link
@@ -192,10 +206,12 @@ export default function StaffCalendarPage() {
                   <li
                     key={apt.id}
                     className={cn(
-                      "flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5",
-                      apt.status === "cancelled" && "bg-slate-50/80 opacity-80"
+                      apt.status === "cancelled" && "bg-slate-50/80 opacity-80",
+                      apt.status === "rejected" && "bg-slate-50/80 opacity-80",
+                      apt.status === "pending_review" && "bg-sky-50/60"
                     )}
                   >
+                    <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                     <Link
                       href={
                         aplId ? `/admin/appeals/${aplId}` : "/admin/appeals"
@@ -217,6 +233,8 @@ export default function StaffCalendarPage() {
                           PIN {apt.pin}
                         </span>
                         {" · "}
+                        {targetShort(apt.targetId, isKy, state.serviceContent)}
+                        {" · "}
                         {apt.topic} · {apt.phone}
                       </div>
                     </Link>
@@ -231,9 +249,23 @@ export default function StaffCalendarPage() {
                           {isKy ? "Карточка" : "Карточка"}
                         </Link>
                       )}
+                      {canAct() && apt.status === "pending_review" && (
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1 rounded-lg border border-sky-300 bg-sky-50 px-2.5 py-1.5 text-xs font-semibold text-sky-950 hover:bg-sky-100"
+                          onClick={() =>
+                            setReviewId(reviewId === apt.id ? null : apt.id)
+                          }
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {isKy ? "Чечим" : "Решение"}
+                        </button>
+                      )}
                       {canAct() &&
                         apt.status !== "cancelled" &&
-                        apt.status !== "completed" && (
+                        apt.status !== "completed" &&
+                        apt.status !== "pending_review" &&
+                        apt.status !== "rejected" && (
                           <>
                             <button
                               type="button"
@@ -331,6 +363,22 @@ export default function StaffCalendarPage() {
                         </button>
                       )}
                     </div>
+                    </div>
+                    {reviewId === apt.id &&
+                      apt.status === "pending_review" && (
+                        <div className="px-4 pb-4 sm:px-5">
+                          <ReviewRequestPanel
+                            appointment={apt}
+                            isKy={isKy}
+                            compact
+                            onDone={(ok, message) => {
+                              setReviewId(null);
+                              setErr(!ok);
+                              setMsg(message);
+                            }}
+                          />
+                        </div>
+                      )}
                   </li>
                 );
               })}

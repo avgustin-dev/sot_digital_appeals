@@ -7,8 +7,11 @@ import { StageBadge } from "@/components/ui/Badge";
 import { formatDateRu } from "@/lib/slots";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { AdminHeading } from "@/components/staff/AdminHeading";
+import { ReceptionTabs } from "@/components/staff/ReceptionTabs";
 import { Users } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { targetShort } from "@/lib/targets";
 
 export default function ReceptionPage() {
   const {
@@ -16,7 +19,8 @@ export default function ReceptionPage() {
     currentUser,
     completeReception,
   } = useStore();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isKy = lang === "ky";
   const [selectedId, setSelectedId] = useState<string>("");
   const [citizenStatement, setCitizenStatement] = useState("");
   const [leadershipExplanation, setLeadershipExplanation] = useState("");
@@ -35,13 +39,26 @@ export default function ReceptionPage() {
         appeal: a,
         apt: state.appointments.find((x) => x.id === a.appointmentId),
       }))
-      .filter((x) => x.apt && x.apt.status !== "cancelled")
+      .filter(
+        (x) =>
+          x.apt &&
+          x.apt.status !== "cancelled" &&
+          x.apt.status !== "rejected" &&
+          x.apt.status !== "pending_review"
+      )
       .sort((a, b) => {
         const da = `${a.apt!.date}${a.apt!.slotStart}`;
         const db = `${b.apt!.date}${b.apt!.slotStart}`;
         return da.localeCompare(db);
       });
   }, [state.appeals, state.appointments]);
+
+  const prepQueue = queue.filter((q) =>
+    ["registered", "under_review"].includes(q.appeal.stage)
+  );
+  const liveQueue = queue.filter(
+    (q) => q.appeal.stage === "ready_for_reception"
+  );
 
   const selected = queue.find((q) => q.appeal.id === selectedId);
   const responsibles = state.staff.filter(
@@ -90,12 +107,15 @@ export default function ReceptionPage() {
           { label: t.crumbs.reception },
         ]}
       />
-      <div>
-        <h1 className="section-title">{t.admin.reception}</h1>
-        <p className="mt-1 text-base text-court-muted">
-          Фиксация личного приёма, поручение и назначение ответственного.
-        </p>
-      </div>
+      <AdminHeading
+        title={isKy ? "Кабыл алуу" : "Приём"}
+        lead={
+          isKy
+            ? "Ырасталган жазылуулар. Даярдоо — карточка. Протокол — жетекчилик."
+            : "Подтверждённые записи. Подготовка карточки. Протокол — руководство."
+        }
+      />
+      <ReceptionTabs isKy={isKy} />
 
       {msg && (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
@@ -111,51 +131,117 @@ export default function ReceptionPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
         <section className="card p-5">
           <h2 className="mb-4 font-display text-xl font-semibold text-court-navy">
-            Очередь на приём
+            {isKy ? "Кезек" : "Очередь"}
           </h2>
           {queue.length === 0 ? (
             <EmptyState
               icon={Users}
-              title="Очередь пуста"
-              description="Нет обращений, ожидающих личного приёма."
+              title={isKy ? "Кезек бош" : "Очередь пуста"}
+              description={
+                isKy
+                  ? "Ырасталган кайрылуулар жок."
+                  : "Нет подтверждённых обращений."
+              }
               className="border-0 shadow-none"
             />
           ) : (
-            <ul className="space-y-2">
-              {queue.map(({ appeal, apt }) => (
-                <li key={appeal.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedId(appeal.id)}
-                    className={`w-full rounded-xl border px-3 py-3 text-left transition ${
-                      selectedId === appeal.id
-                        ? "border-court-gold bg-court-goldPale"
-                        : "border-court-line hover:bg-court-mist"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="font-mono text-xs text-court-muted">
-                          {appeal.code}
-                        </div>
-                        <div className="font-semibold text-court-navy">
-                          {appeal.fullName}
-                        </div>
-                        <div className="text-xs text-court-muted">
-                          {appeal.topic}
-                        </div>
-                      </div>
-                      <StageBadge stage={appeal.stage} />
-                    </div>
-                    {apt && (
-                      <div className="mt-2 text-xs font-medium text-court-blue">
-                        {formatDateRu(apt.date)} · {apt.slotStart}–{apt.slotEnd}
-                      </div>
-                    )}
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-4">
+              {prepQueue.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    {isKy ? "Даярдоо" : "Подготовка"} ({prepQueue.length})
+                  </p>
+                  <ul className="space-y-2">
+                    {prepQueue.map(({ appeal, apt }) => (
+                      <li key={appeal.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(appeal.id)}
+                          className={`w-full rounded-xl border px-3 py-3 text-left transition ${
+                            selectedId === appeal.id
+                              ? "border-court-gold bg-court-goldPale"
+                              : "border-court-line hover:bg-court-mist"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="font-mono text-xs text-court-muted">
+                                {appeal.code}
+                              </div>
+                              <div className="font-semibold text-court-navy">
+                                {appeal.fullName}
+                              </div>
+                              <div className="text-xs text-court-muted">
+                                {appeal.topic}
+                              </div>
+                            </div>
+                            <StageBadge stage={appeal.stage} />
+                          </div>
+                          {apt && (
+                            <div className="mt-2 text-xs font-medium text-court-blue">
+                              {targetShort(apt.targetId, isKy, state.serviceContent)} ·{" "}
+                              {formatDateRu(apt.date)} · {apt.slotStart}–
+                              {apt.slotEnd}
+                            </div>
+                          )}
+                          <Link
+                            href={`/admin/appeals/${appeal.id}`}
+                            className="mt-2 inline-block text-[11px] font-semibold text-court-blue"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {isKy ? "Карточка" : "Открыть карточку"}
+                          </Link>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {liveQueue.length > 0 && (
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    {isKy ? "Протокол" : "К протоколу"} ({liveQueue.length})
+                  </p>
+                  <ul className="space-y-2">
+                    {liveQueue.map(({ appeal, apt }) => (
+                      <li key={appeal.id}>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(appeal.id)}
+                          className={`w-full rounded-xl border px-3 py-3 text-left transition ${
+                            selectedId === appeal.id
+                              ? "border-court-gold bg-court-goldPale"
+                              : "border-court-line hover:bg-court-mist"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="font-mono text-xs text-court-muted">
+                                {appeal.code}
+                              </div>
+                              <div className="font-semibold text-court-navy">
+                                {appeal.fullName}
+                              </div>
+                              <div className="text-xs text-court-muted">
+                                {appeal.topic}
+                              </div>
+                            </div>
+                            <StageBadge stage={appeal.stage} />
+                          </div>
+                          {apt && (
+                            <div className="mt-2 text-xs font-medium text-court-blue">
+                              {targetShort(apt.targetId, isKy, state.serviceContent)} ·{" "}
+                              {formatDateRu(apt.date)} · {apt.slotStart}–
+                              {apt.slotEnd}
+                            </div>
+                          )}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
         </section>
 
@@ -165,8 +251,9 @@ export default function ReceptionPage() {
           </h2>
           {!selected ? (
             <p className="text-sm text-court-muted">
-              Выберите обращение из очереди. До фиксации приёма рекомендуется
-              завершить предварительное изучение электронной карточки.
+              {isKy
+                ? "Кезектен кайрылууну тандаңыз. Протоколду толтуруудан мурун карточканы изилдөө жүргүзүлөт."
+                : "Выберите обращение из очереди. До заполнения протокола проводится изучение электронной карточки."}
             </p>
           ) : (
             <>

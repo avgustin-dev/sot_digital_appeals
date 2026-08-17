@@ -4,9 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  PIPELINE_STEPS,
-  RECEPTION_ALLOWED,
-  RECEPTION_FORBIDDEN,
   STAGE_LABELS,
   STATUS_LABELS,
 } from "@/lib/constants";
@@ -15,7 +12,7 @@ import { useI18n } from "@/lib/i18n";
 import { EmblemKR } from "@/components/brand/Emblem";
 import { useStore } from "@/lib/store";
 import { formatDateRu } from "@/lib/slots";
-import { defaultServiceContent } from "@/lib/serviceContent";
+import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
 import { CourtContactsBlock } from "@/components/ui/CourtContactsBlock";
 
 /**
@@ -28,19 +25,11 @@ export default function HomePage() {
   const router = useRouter();
   const { ready, state, lookupByCode, recoverCodesByPhone } = useStore();
 
-  const sc = state.serviceContent ?? defaultServiceContent();
-  const hubTitle = isKy
-    ? sc.hubTitleKy || sc.hubTitleRu
-    : sc.hubTitleRu || sc.hubTitleKy;
-  const hubLead = isKy
-    ? sc.hubLeadKy || sc.hubLeadRu
-    : sc.hubLeadRu || sc.hubLeadKy;
-  const hubCta = isKy
-    ? sc.hubCtaKy || sc.hubCtaRu
-    : sc.hubCtaRu || sc.hubCtaKy;
-  const memoTitle = isKy
-    ? sc.memoTitleKy || sc.memoTitleRu
-    : sc.memoTitleRu || sc.memoTitleKy;
+  const sc = mergeServiceContent(state.serviceContent);
+  const hubTitle = pickLocale(isKy, sc.hubTitleRu, sc.hubTitleKy);
+  const hubLead = pickLocale(isKy, sc.hubLeadRu, sc.hubLeadKy);
+  const hubCta = pickLocale(isKy, sc.hubCtaRu, sc.hubCtaKy);
+  const memoTitle = pickLocale(isKy, sc.memoTitleRu, sc.memoTitleKy);
   const memoItems = isKy
     ? sc.memoItemsKy?.length
       ? sc.memoItemsKy
@@ -51,21 +40,13 @@ export default function HomePage() {
   const allowed = isKy
     ? sc.allowedKy?.length
       ? sc.allowedKy
-      : sc.allowedRu?.length
-        ? sc.allowedRu
-        : RECEPTION_ALLOWED
-    : sc.allowedRu?.length
-      ? sc.allowedRu
-      : RECEPTION_ALLOWED;
+      : sc.allowedRu
+    : sc.allowedRu;
   const forbidden = isKy
     ? sc.forbiddenKy?.length
       ? sc.forbiddenKy
-      : sc.forbiddenRu?.length
-        ? sc.forbiddenRu
-        : RECEPTION_FORBIDDEN
-    : sc.forbiddenRu?.length
-      ? sc.forbiddenRu
-      : RECEPTION_FORBIDDEN;
+      : sc.forbiddenRu
+    : sc.forbiddenRu;
 
   const [statusCode, setStatusCode] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
@@ -151,7 +132,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-3xl px-4 py-10 text-center md:px-6 md:py-12">
           <EmblemKR size={72} priority className="mx-auto" />
           <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-court-muted">
-            {t.orgName}
+            {pickLocale(isKy, sc.orgNameRu, sc.orgNameKy)}
           </p>
           <h1 className="mt-2 text-2xl font-bold leading-snug text-court-navy sm:text-3xl">
             {hubTitle}
@@ -160,9 +141,7 @@ export default function HomePage() {
             {hubLead}
           </p>
           <p className="mx-auto mt-3 max-w-2xl text-left text-xs leading-relaxed text-court-muted sm:text-center sm:text-sm">
-            {isKy
-              ? "Төмөндө — жазылуу, жазылууну башкаруу, эрежелер жана сервис сапатын баалоо (электрондук жазылуу + кабыл алуу)."
-              : "Ниже — запись на приём, управление записью, правила и оценка качества сервиса (электронная запись и работа общественной приёмной)."}
+            {pickLocale(isKy, sc.hubKickerRu, sc.hubKickerKy)}
           </p>
 
           <div className="mx-auto mt-6 max-w-md rounded-lg border border-court-line bg-court-mist/50 p-5 text-left shadow-sm">
@@ -187,12 +166,7 @@ export default function HomePage() {
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-4 text-sm leading-relaxed text-court-ink sm:px-5">
           <div className="font-semibold text-amber-900">{memoTitle}</div>
           <ul className="mt-2 list-disc space-y-1.5 pl-4 text-amber-950/90">
-            {(memoItems?.length
-              ? memoItems
-              : isKy
-                ? defaultServiceContent().memoItemsKy
-                : defaultServiceContent().memoItemsRu
-            ).map((item) => (
+            {(memoItems?.length ? memoItems : []).map((item) => (
               <li key={item}>{item}</li>
             ))}
           </ul>
@@ -361,7 +335,8 @@ export default function HomePage() {
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border border-court-line bg-white p-5">
             <h3 className="font-semibold text-court-success">
-              {t.home.allowed}
+              {pickLocale(isKy, sc.allowedTitleRu, sc.allowedTitleKy) ||
+                t.home.allowed}
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-court-ink">
               {allowed.map((i) => (
@@ -371,7 +346,8 @@ export default function HomePage() {
           </div>
           <div className="rounded-lg border border-court-line bg-white p-5">
             <h3 className="font-semibold text-court-danger">
-              {t.home.forbidden}
+              {pickLocale(isKy, sc.forbiddenTitleRu, sc.forbiddenTitleKy) ||
+                t.home.forbidden}
             </h3>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-sm text-court-ink">
               {forbidden.map((i) => (
@@ -383,21 +359,26 @@ export default function HomePage() {
 
         <div className="rounded-lg border border-court-line bg-white p-5 sm:p-6">
           <div className="mb-1 flex flex-wrap items-center gap-2">
-            <h2 className="section-title !mb-0">{t.home.cycle}</h2>
+            <h2 className="section-title !mb-0">
+              {pickLocale(isKy, sc.cycleTitleRu, sc.cycleTitleKy) ||
+                t.home.cycle}
+            </h2>
             <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
               {isKy ? "Демо" : "Демо"}
             </span>
           </div>
-          <p className="mb-2 text-sm text-court-muted">{t.home.cycleLead}</p>
+          <p className="mb-2 text-sm text-court-muted">
+            {pickLocale(isKy, sc.cycleLeadRu, sc.cycleLeadKy) || t.home.cycleLead}
+          </p>
           <p className="mb-4 text-xs text-slate-500">
             {isKy
               ? "Төмөнкү этаптар — демо-түшүндүрмө. Расмий порталда бул бөлүм өзгөчө баракча катары калбашы мүмкүн."
               : "Схема этапов приведена для демонстрации. В официальной версии отдельная страница «Порядок работы» может не публиковаться как самостоятельный раздел."}
           </p>
           <ProgressSteps
-            steps={PIPELINE_STEPS.map((s) => ({
-              title: s.title,
-              desc: s.desc,
+            steps={sc.processSteps.map((s) => ({
+              title: pickLocale(isKy, s.titleRu, s.titleKy),
+              desc: pickLocale(isKy, s.pointsRu[0], s.pointsKy[0]),
             }))}
             current={0}
           />

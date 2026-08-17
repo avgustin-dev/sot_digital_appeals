@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import {
@@ -14,7 +14,7 @@ import {
   SEED_SURVEY_QUESTIONS,
   SEED_SURVEY_RESPONSES,
 } from "./surveySeed";
-import { defaultServiceContent } from "./serviceContent";
+import { mergeServiceContent } from "./serviceContent";
 import {
   addEligibilityChild,
   cloneEligibilityTree,
@@ -40,12 +40,26 @@ import type {
   ServiceContent,
   AdminModule,
   EligibilityTreeNode,
+  NotificationItem,
 } from "./types";
 import { generateCode, generateId, generatePin, matchCitizen } from "./utils";
-import { getAvailableSlotsForDate } from "./slots";
+import { formatDateRu, getAvailableSlotsForDate } from "./slots";
+import { targetShort } from "./targets";
 
-export const STORAGE_KEY = "vs-kr-citizen-platform-v4";
-const STATE_VERSION = 4;
+export const STORAGE_KEY = "vs-kr-citizen-platform-v7";
+const STATE_VERSION = 7;
+
+function mergeStaff(
+  saved: StaffUser[] | undefined,
+  seed: StaffUser[]
+): StaffUser[] {
+  if (!saved?.length) return seed;
+  const byLogin = new Map(saved.map((s) => [s.login, s]));
+  for (const s of seed) {
+    if (!byLogin.has(s.login)) byLogin.set(s.login, s);
+  }
+  return Array.from(byLogin.values());
+}
 
 function seedEligibilityTree(): EligibilityTreeNode[] {
   return cloneEligibilityTree() as EligibilityTreeNode[];
@@ -61,7 +75,24 @@ export type BookInput = {
   date: string;
   slotStart: string;
   slotEnd: string;
+  targetId: string;
+  companions?: { fullName: string; phone?: string }[];
 };
+
+function makeNotice(
+  channel: NotificationItem["channel"],
+  title: string,
+  body: string
+): NotificationItem {
+  return {
+    id: generateId("n"),
+    at: new Date().toISOString(),
+    channel,
+    title,
+    body,
+    read: false,
+  };
+}
 
 type ResultOk = { ok: true };
 type ResultErr = { ok: false; error: string };
@@ -76,6 +107,16 @@ type PlatformStore = PlatformState & {
   ) =>
     | { ok: true; appointment: Appointment; pin: string }
     | ResultErr;
+  confirmAppointmentRequest: (
+    appointmentId: string,
+    user: StaffUser,
+    note?: string
+  ) => ResultOk | ResultErr;
+  rejectAppointmentRequest: (
+    appointmentId: string,
+    user: StaffUser,
+    reason: string
+  ) => ResultOk | ResultErr;
   findAppointment: (code: string, pin: string) => Appointment | null;
   /** Публичный статус по коду (без PIN) — только для хаба */
   lookupByCode: (code: string) => {
@@ -212,7 +253,7 @@ function initialData(): PlatformState {
       options: q.options.map((o) => ({ ...o })),
     })),
     surveyResponses: [...SEED_SURVEY_RESPONSES],
-    serviceContent: defaultServiceContent(),
+    serviceContent: mergeServiceContent(),
     adminModule: "reception",
     eligibilityTree: seedEligibilityTree(),
   };
@@ -263,12 +304,29 @@ export const usePlatformStore = create<PlatformStore>()(
           return { ok: false, error: "Укажите телефон" };
         if (!input.date || !input.slotStart)
           return { ok: false, error: "Выберите дату и время" };
+        if (!input.targetId)
+          return { ok: false, error: "Укажите, к кому запись" };
+        const companions = (input.companions || [])
+          .map((c) => ({
+            fullName: c.fullName.trim(),
+            phone: c.phone?.trim() || undefined,
+          }))
+          .filter((c) => c.fullName);
+        if (companions.length > 2) {
+          return {
+            ok: false,
+            error: "Допускается не более двух сопровождающих.",
+          };
+        }
 
-        const { calendar, appointments, appeals } = get();
+        const { calendar, appointments, appeals, serviceContent } = get();
         const free = getAvailableSlotsForDate(
           input.date,
           calendar,
-          appointments
+          appointments,
+          undefined,
+          input.targetId,
+          serviceContent
         );
         if (!free.some((s) => s.start === input.slotStart)) {
           return {
@@ -282,6 +340,8 @@ export const usePlatformStore = create<PlatformStore>()(
         const pin = generatePin();
         const aptId = generateId("apt");
         const aplId = generateId("apl");
+        const when = `${formatDateRu(input.date)} ${input.slotStart}–${input.slotEnd}`;
+        const who = targetShort(input.targetId, false, get().serviceContent);
 
         const appointment: Appointment = {
           id: aptId,
@@ -296,14 +356,16 @@ export const usePlatformStore = create<PlatformStore>()(
           date: input.date,
           slotStart: input.slotStart,
           slotEnd: input.slotEnd,
-          status: "confirmed",
+          status: "pending_review",
+          targetId: input.targetId,
+          companions,
           createdAt: now,
           updatedAt: now,
           history: [
             {
               at: now,
-              action: "Запись создана и подтверждена",
-              detail: `${input.date} ${input.slotStart}–${input.slotEnd}`,
+              action: "Заявка подана",
+              detail: `${who}, ${when}. Ожидает решения приёмной.`,
             },
           ],
         };
@@ -335,14 +397,16 @@ export const usePlatformStore = create<PlatformStore>()(
           prepNotes: "",
           controlLog: [],
           notifications: [
-            {
-              id: generateId("n"),
-              at: now,
-              channel: "system",
-              title: "Запись подтверждена",
-              body: `Уважаемый(ая) ${input.fullName.trim()}! Ваша запись на приём к руководству Верховного суда КР подтверждена. Дата: ${input.date}, время: ${input.slotStart}–${input.slotEnd}. Код записи: ${code}. PIN для управления записью: ${pin}.`,
-              read: false,
-            },
+            makeNotice(
+              "sms",
+              "Заявка принята на проверку",
+              `ВС КР: заявка ${code} принята. ${who}, ${when}. Ожидайте подтверждения приёмной. PIN ${pin}. Каб. 111.`
+            ),
+            makeNotice(
+              "system",
+              "Заявка зарегистрирована",
+              `Уважаемый(ая) ${input.fullName.trim()}! Заявка на приём принята на проверку общественной приёмной. Код: ${code}. PIN: ${pin}.`
+            ),
           ],
           createdAt: now,
           updatedAt: now,
@@ -354,6 +418,105 @@ export const usePlatformStore = create<PlatformStore>()(
         }));
 
         return { ok: true, appointment, pin };
+      },
+
+      confirmAppointmentRequest: (appointmentId, user, note) => {
+        const apt = get().appointments.find((a) => a.id === appointmentId);
+        if (!apt) return { ok: false, error: "Запись не найдена" };
+        if (apt.status !== "pending_review") {
+          return { ok: false, error: "Подтвердить можно только заявку на проверке" };
+        }
+        const now = new Date().toISOString();
+        const when = `${formatDateRu(apt.date)} ${apt.slotStart}–${apt.slotEnd}`;
+        const who = targetShort(apt.targetId, false, get().serviceContent);
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === appointmentId
+              ? {
+                  ...a,
+                  status: "confirmed" as const,
+                  reviewNote: note?.trim() || a.reviewNote,
+                  updatedAt: now,
+                  history: [
+                    ...a.history,
+                    {
+                      at: now,
+                      action: "Заявка подтверждена приёмной",
+                      detail: note?.trim() || user.fullName,
+                    },
+                  ],
+                }
+              : a
+          ),
+          appeals: s.appeals.map((ap) =>
+            ap.appointmentId === appointmentId
+              ? {
+                  ...ap,
+                  updatedAt: now,
+                  notifications: [
+                    makeNotice(
+                      "sms",
+                      "Запись подтверждена",
+                      `ВС КР: запись ${ap.code} подтверждена. ${who}, ${when}. Каб. 111, паспорт. PIN ${apt.pin}.`
+                    ),
+                    ...ap.notifications,
+                  ],
+                }
+              : ap
+          ),
+        }));
+        return { ok: true };
+      },
+
+      rejectAppointmentRequest: (appointmentId, user, reason) => {
+        const apt = get().appointments.find((a) => a.id === appointmentId);
+        if (!apt) return { ok: false, error: "Запись не найдена" };
+        if (apt.status !== "pending_review") {
+          return { ok: false, error: "Отклонить можно только заявку на проверке" };
+        }
+        const why = reason.trim();
+        if (why.length < 8) {
+          return { ok: false, error: "Укажите причину отказа (кратко, официально)." };
+        }
+        const now = new Date().toISOString();
+        set((s) => ({
+          appointments: s.appointments.map((a) =>
+            a.id === appointmentId
+              ? {
+                  ...a,
+                  status: "rejected" as const,
+                  reviewNote: why,
+                  updatedAt: now,
+                  history: [
+                    ...a.history,
+                    {
+                      at: now,
+                      action: "Заявка не подтверждена",
+                      detail: `${user.fullName}: ${why}`,
+                    },
+                  ],
+                }
+              : a
+          ),
+          appeals: s.appeals.map((ap) =>
+            ap.appointmentId === appointmentId
+              ? {
+                  ...ap,
+                  stage: "cancelled" as AppealStage,
+                  updatedAt: now,
+                  notifications: [
+                    makeNotice(
+                      "sms",
+                      "Запись не подтверждена",
+                      `ВС КР: по заявке ${ap.code} запись не подтверждена. ${why}`
+                    ),
+                    ...ap.notifications,
+                  ],
+                }
+              : ap
+          ),
+        }));
+        return { ok: true };
       },
 
       findAppointment: (code, pin) =>
@@ -382,7 +545,7 @@ export const usePlatformStore = create<PlatformStore>()(
             const p = a.phone.replace(/\D/g, "");
             return p.endsWith(digits.slice(-9)) || p === digits;
           })
-          .filter((a) => a.status !== "cancelled")
+          .filter((a) => a.status !== "cancelled" && a.status !== "rejected")
           .map((a) => a.code);
       },
 
@@ -400,6 +563,8 @@ export const usePlatformStore = create<PlatformStore>()(
             ok: false,
             error: "Приём уже проведён — отмена невозможна.",
           };
+        if (apt.status === "rejected")
+          return { ok: false, error: "Эта заявка уже не подтверждена." };
 
         const now = new Date().toISOString();
         set((s) => ({
@@ -571,8 +736,10 @@ export const usePlatformStore = create<PlatformStore>()(
         const now = new Date().toISOString();
         const stageMap: Partial<Record<Appointment["status"], AppealStage>> = {
           cancelled: "cancelled",
+          rejected: "cancelled",
           completed: "reception_done",
           confirmed: "registered",
+          pending_review: "registered",
           rescheduled: "registered",
           no_show: "cancelled",
         };
@@ -639,7 +806,9 @@ export const usePlatformStore = create<PlatformStore>()(
           date,
           get().calendar,
           get().appointments,
-          appointmentId
+          appointmentId,
+          apt.targetId,
+          get().serviceContent
         );
         // staff may force time even if not in free list, but prefer free
         const okSlot =
@@ -830,12 +999,21 @@ export const usePlatformStore = create<PlatformStore>()(
           };
         if (apt.status === "completed")
           return { ok: false, error: "Приём уже проведён." };
+        if (apt.status === "rejected")
+          return { ok: false, error: "Неподтверждённую заявку перенести нельзя." };
+        if (apt.status === "pending_review")
+          return {
+            ok: false,
+            error: "Дождитесь решения приёмной — затем можно перенести запись.",
+          };
 
         const free = getAvailableSlotsForDate(
           date,
           get().calendar,
           get().appointments,
-          apt.id
+          apt.id,
+          apt.targetId,
+          get().serviceContent
         );
         if (!free.some((s) => s.start === slotStart)) {
           return { ok: false, error: "Выбранный слот недоступен." };
@@ -1228,21 +1406,21 @@ export const usePlatformStore = create<PlatformStore>()(
 
       updateServiceContent: (patch) => {
         set((s) => ({
-          serviceContent: {
-            ...(s.serviceContent ?? defaultServiceContent()),
+          serviceContent: mergeServiceContent({
+            ...(s.serviceContent ?? {}),
             ...patch,
-          },
+          }),
         }));
       },
 
       updateBookingRules: (patch) => {
         set((s) => {
-          const sc = s.serviceContent ?? defaultServiceContent();
+          const sc = mergeServiceContent(s.serviceContent);
           return {
-            serviceContent: {
+            serviceContent: mergeServiceContent({
               ...sc,
               rules: { ...sc.rules, ...patch },
-            },
+            }),
           };
         });
       },
@@ -1250,7 +1428,7 @@ export const usePlatformStore = create<PlatformStore>()(
       setAdminModule: (m) => set({ adminModule: m }),
 
       resetServiceContent: () => {
-        set({ serviceContent: defaultServiceContent() });
+        set({ serviceContent: mergeServiceContent() });
       },
 
       setEligibilityTree: (tree) => {
@@ -1330,13 +1508,19 @@ export const usePlatformStore = create<PlatformStore>()(
           ...base,
           ...p,
           version: STATE_VERSION,
+          staff: mergeStaff(p.staff, base.staff),
+          appointments: (p.appointments ?? base.appointments).map((a) => ({
+            ...a,
+            targetId: a.targetId || "reception",
+            companions: a.companions ?? [],
+          })),
           surveyMeta: p.surveyMeta ?? base.surveyMeta,
           surveyQuestions:
             p.surveyQuestions && p.surveyQuestions.length
               ? p.surveyQuestions
               : base.surveyQuestions,
           surveyResponses: p.surveyResponses ?? base.surveyResponses,
-          serviceContent: p.serviceContent ?? base.serviceContent,
+          serviceContent: mergeServiceContent(p.serviceContent),
           adminModule: p.adminModule ?? "reception",
           eligibilityTree:
             p.eligibilityTree && p.eligibilityTree.length
@@ -1379,6 +1563,11 @@ export function useStore() {
     ? store.staff.find((s) => s.id === store.session?.userId) ?? null
     : null;
 
+  const serviceContent = useMemo(
+    () => mergeServiceContent(store.serviceContent),
+    [store.serviceContent]
+  );
+
   return {
     ready,
     state: {
@@ -1394,7 +1583,7 @@ export function useStore() {
           ? store.surveyQuestions
           : initialData().surveyQuestions,
       surveyResponses: store.surveyResponses ?? [],
-      serviceContent: store.serviceContent ?? defaultServiceContent(),
+      serviceContent,
       adminModule: store.adminModule ?? "reception",
       eligibilityTree:
         store.eligibilityTree?.length
@@ -1407,6 +1596,8 @@ export function useStore() {
     resetDemo: store.resetDemo,
     updateCalendar: store.updateCalendar,
     bookAppointment: store.bookAppointment,
+    confirmAppointmentRequest: store.confirmAppointmentRequest,
+    rejectAppointmentRequest: store.rejectAppointmentRequest,
     findAppointment: store.findAppointment,
     lookupByCode: store.lookupByCode,
     recoverCodesByPhone: store.recoverCodesByPhone,

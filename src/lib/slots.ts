@@ -7,7 +7,8 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
-import type { Appointment, CalendarSettings, TimeSlot } from "./types";
+import type { Appointment, CalendarSettings, ServiceContent, TimeSlot } from "./types";
+import { resolveTargetWindow } from "./targets";
 
 /** Минуты → "HH:mm" */
 export function minutesToTime(total: number): string {
@@ -26,13 +27,15 @@ export function timeToMinutes(time: string): number {
  * 08:00–08:20, 08:25–08:45, 08:50–09:10, …
  * (20 мин приём + 5 мин пауза)
  */
-export function generateDaySlots(settings: CalendarSettings): TimeSlot[] {
-  const {
-    dayStartMinutes,
-    dayEndMinutes,
-    slotDurationMinutes,
-    breakMinutes,
-  } = settings;
+export function generateDaySlots(
+  settings: CalendarSettings,
+  windowOverride?: { startMinutes: number; endMinutes: number }
+): TimeSlot[] {
+  const slotDurationMinutes = settings.slotDurationMinutes;
+  const breakMinutes = settings.breakMinutes;
+  const dayStartMinutes =
+    windowOverride?.startMinutes ?? settings.dayStartMinutes;
+  const dayEndMinutes = windowOverride?.endMinutes ?? settings.dayEndMinutes;
   const slots: TimeSlot[] = [];
   let cursor = dayStartMinutes;
 
@@ -52,26 +55,32 @@ export function generateDaySlots(settings: CalendarSettings): TimeSlot[] {
 
 export function isReceptionDate(
   dateStr: string,
-  settings: CalendarSettings
+  settings: CalendarSettings,
+  targetId?: string,
+  sc?: ServiceContent | null
 ): boolean {
   if (settings.closedDates.includes(dateStr)) return false;
   if (settings.extraOpenDates.includes(dateStr)) return true;
   const d = parseISO(dateStr);
-  return settings.receptionWeekdays.includes(getDay(d));
+  const weekdays = targetId
+    ? resolveTargetWindow(targetId, settings, sc).weekdays
+    : settings.receptionWeekdays;
+  return weekdays.includes(getDay(d));
 }
 
 export function listAvailableDates(
   settings: CalendarSettings,
-  from: Date = new Date()
+  from: Date = new Date(),
+  targetId?: string,
+  sc?: ServiceContent | null
 ): string[] {
   const dates: string[] = [];
   const start = startOfDay(from);
   for (let i = 0; i <= settings.bookingHorizonDays; i++) {
     const day = addDays(start, i);
-    // нельзя записаться «на вчера»; на сегодня — только если есть свободные слоты (фильтруем отдельно)
     if (isBefore(day, start) && !isEqual(day, start)) continue;
     const key = format(day, "yyyy-MM-dd");
-    if (isReceptionDate(key, settings)) dates.push(key);
+    if (isReceptionDate(key, settings, targetId, sc)) dates.push(key);
   }
   return dates;
 }
@@ -79,12 +88,14 @@ export function listAvailableDates(
 export function getBookedSlotKeys(
   appointments: Appointment[],
   date: string,
-  excludeId?: string
+  excludeId?: string,
+  targetId?: string
 ): Set<string> {
   const set = new Set<string>();
   for (const a of appointments) {
     if (a.date !== date) continue;
-    if (a.status === "cancelled") continue;
+    if (a.status === "cancelled" || a.status === "rejected") continue;
+    if (targetId && (a.targetId || "reception") !== targetId) continue;
     if (excludeId && a.id === excludeId) continue;
     set.add(a.slotStart);
   }
@@ -95,15 +106,31 @@ export function getAvailableSlotsForDate(
   date: string,
   settings: CalendarSettings,
   appointments: Appointment[],
-  excludeAppointmentId?: string
+  excludeAppointmentId?: string,
+  targetId?: string,
+  sc?: ServiceContent | null
 ): TimeSlot[] {
-  if (!isReceptionDate(date, settings)) return [];
-  const booked = getBookedSlotKeys(appointments, date, excludeAppointmentId);
+  if (!isReceptionDate(date, settings, targetId, sc)) return [];
+  const booked = getBookedSlotKeys(
+    appointments,
+    date,
+    excludeAppointmentId,
+    targetId
+  );
   const today = format(new Date(), "yyyy-MM-dd");
   const nowMinutes =
     new Date().getHours() * 60 + new Date().getMinutes();
+  const win = targetId
+    ? resolveTargetWindow(targetId, settings, sc)
+    : {
+        startMinutes: settings.dayStartMinutes,
+        endMinutes: settings.dayEndMinutes,
+      };
 
-  return generateDaySlots(settings).filter((slot) => {
+  return generateDaySlots(settings, {
+    startMinutes: win.startMinutes,
+    endMinutes: win.endMinutes,
+  }).filter((slot) => {
     if (booked.has(slot.start)) return false;
     if (date === today && timeToMinutes(slot.start) <= nowMinutes) return false;
     return true;

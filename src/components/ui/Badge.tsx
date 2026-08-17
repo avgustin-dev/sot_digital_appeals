@@ -14,9 +14,11 @@ const stageTone: Record<AppealStage, string> = {
 };
 
 const statusTone: Record<AppointmentStatus, string> = {
+  pending_review: "border-sky-300 bg-sky-50 text-sky-950",
   confirmed: "border-emerald-300 bg-emerald-50 text-emerald-900",
   rescheduled: "border-amber-300 bg-amber-50 text-amber-950",
   cancelled: "border-red-300 bg-red-50 text-red-900",
+  rejected: "border-slate-300 bg-slate-100 text-slate-700",
   completed: "border-slate-300 bg-slate-100 text-slate-700",
   no_show: "border-orange-300 bg-orange-50 text-orange-950",
 };

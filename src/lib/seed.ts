@@ -1,3 +1,4 @@
+import { LEADERSHIP_RECEPTION_SCHEDULE } from "./constants";
 import type { AppealCard, Appointment, CalendarSettings, StaffUser } from "./types";
 
 export const DEFAULT_CALENDAR: CalendarSettings = {
@@ -25,7 +26,18 @@ export const DEFAULT_CALENDAR: CalendarSettings = {
 10. Неявка без отмены может повлечь ограничение последующей записи.`,
 };
 
+const chairman = LEADERSHIP_RECEPTION_SCHEDULE[0];
+
 export const SEED_STAFF: StaffUser[] = [
+  {
+    id: "u-chairman",
+    login: "predsedatel",
+    password: "vs2026",
+    fullName: chairman.fullNameRu,
+    role: "leadership",
+    position: chairman.positionRu,
+    department: "Верховный суд Кыргызской Республики",
+  },
   {
     id: "u-admin",
     login: "admin",
@@ -109,9 +121,11 @@ export const SEED_APPOINTMENTS: Appointment[] = [
     description:
       "Прошу разъяснить порядок информирования граждан о ходе рассмотрения жалоб в судах и предложить единый канал уведомлений.",
     date: demoDate1,
-    slotStart: "08:00",
-    slotEnd: "08:20",
+    slotStart: "15:00",
+    slotEnd: "15:20",
     status: "confirmed",
+    targetId: "deputy_bakirova",
+    companions: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     history: [
@@ -132,9 +146,11 @@ export const SEED_APPOINTMENTS: Appointment[] = [
     category: "court_activity",
     description: "Предлагаю расширить график приёма в областных судах.",
     date: demoDate2,
-    slotStart: "08:25",
-    slotEnd: "08:45",
+    slotStart: "09:00",
+    slotEnd: "09:20",
     status: "confirmed",
+    targetId: "chairman",
+    companions: [{ fullName: "Исаков Бакыт", phone: "+996555000111" }],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     history: [
@@ -156,9 +172,38 @@ export const SEED_APPOINTMENTS: Appointment[] = [
     slotStart: "08:00",
     slotEnd: "08:20",
     status: "completed",
+    targetId: "reception",
+    companions: [],
     createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
     updatedAt: new Date(Date.now() - 10 * 86400000).toISOString(),
     history: [{ at: pastDate, action: "Приём проведён" }],
+  },
+  {
+    id: "apt-pending-1",
+    code: "VS-2026-1003",
+    fullName: "Мамытов Эрлан Сагынович",
+    phone: "+996700333221",
+    email: "erlan.m@example.com",
+    pin: "5502",
+    topic: "Предложение по информированию о графике приёма в областных судах",
+    category: "organization",
+    description:
+      "Прошу рассмотреть публикацию единого понятного графика приёма граждан во всех областных судах на государственном и официальном языках.",
+    date: demoDate1,
+    slotStart: "08:00",
+    slotEnd: "08:20",
+    status: "pending_review",
+    targetId: "reception",
+    companions: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    history: [
+      {
+        at: new Date().toISOString(),
+        action: "Заявка подана",
+        detail: "Ожидает решения общественной приёмной",
+      },
+    ],
   },
 ];
 
@@ -289,5 +334,34 @@ export const SEED_APPEALS: AppealCard[] = [
     notifications: [],
     createdAt: new Date(Date.now() - 20 * 86400000).toISOString(),
     updatedAt: new Date(Date.now() - 9 * 86400000).toISOString(),
+  },
+  {
+    id: "apl-pending-1",
+    appointmentId: "apt-pending-1",
+    code: "VS-2026-1003",
+    fullName: "Мамытов Эрлан Сагынович",
+    phone: "+996700333221",
+    email: "erlan.m@example.com",
+    topic: "Предложение по информированию о графике приёма в областных судах",
+    category: "organization",
+    summary:
+      "Предложение публиковать единый график приёма граждан в областных судах на двух языках.",
+    stage: "registered",
+    previousAppealIds: [],
+    previousNotes: "Предыдущих обращений не обнаружено.",
+    prepNotes: "",
+    controlLog: [],
+    notifications: [
+      {
+        id: "n-pending-1",
+        at: new Date().toISOString(),
+        channel: "sms",
+        title: "Заявка принята на проверку",
+        body: "ВС КР: заявка VS-2026-1003 принята. Ожидайте подтверждения общественной приёмной. PIN 5502.",
+        read: false,
+      },
+    ],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
 ];

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  CalendarDays,
   FileText,
   Users,
   ClipboardCheck,
@@ -19,6 +18,7 @@ import {
   ExternalLink,
   GitBranch,
   BookOpen,
+  Inbox,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { useStore } from "@/lib/store";
@@ -27,27 +27,38 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { LangSwitch } from "@/components/ui/LangSwitch";
 import { useI18n } from "@/lib/i18n";
 import { EmblemKR } from "@/components/brand/Emblem";
-import type { AdminModule } from "@/lib/types";
 
 type NavItem = {
   href: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
   exact?: boolean;
-  hint?: string;
+  prefixes?: string[];
+  badge?: number;
 };
 
 export function StaffShell({ children }: { children: React.ReactNode }) {
-  const { currentUser, logout, ready, setAdminModule } = useStore();
+  const { currentUser, logout, ready, setAdminModule, state } = useStore();
   const { lang } = useI18n();
   const isKy = lang === "ky";
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  const module: AdminModule = pathname.startsWith("/admin/survey")
-    ? "survey"
-    : "reception";
+  const today = new Date().toISOString().slice(0, 10);
+  const pendingCount = state.appointments.filter(
+    (a) => a.status === "pending_review"
+  ).length;
+  const overdueCount = state.appeals.filter(
+    (a) =>
+      a.stage === "in_control" &&
+      a.assignment?.dueDate &&
+      a.assignment.dueDate < today &&
+      a.assignment.status !== "done"
+  ).length;
+
+  const survey = pathname.startsWith("/admin/survey");
+  const role = currentUser?.role;
 
   useEffect(() => {
     if (pathname.startsWith("/admin/survey")) setAdminModule("survey");
@@ -55,31 +66,101 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
       setAdminModule("reception");
   }, [pathname, setAdminModule]);
 
-  const receptionNav: NavItem[] = useMemo(
-    () => [
-      { href: "/admin", label: isKy ? "Бүгүн" : "Рабочий стол", icon: LayoutDashboard, exact: true, hint: isKy ? "Эмне кылуу керек" : "Что сделать сегодня" },
-      { href: "/admin/calendar", label: isKy ? "Жазылуулар" : "Записи и календарь", icon: CalendarDays, hint: isKy ? "Ким качан" : "Кто и когда" },
-      { href: "/admin/appeals", label: isKy ? "Кайрылуулар" : "Обращения", icon: FileText, hint: isKy ? "Бардык карточкалар" : "Все карточки" },
-      { href: "/admin/reception", label: isKy ? "Даярдоо / кабыл алуу" : "Подготовка и приём", icon: Users, hint: isKy ? "Этап 2–3" : "Этапы 2–3" },
-      { href: "/admin/control", label: isKy ? "Көзөмөл" : "Контроль поручений", icon: ClipboardCheck, hint: isKy ? "Этап 4" : "Этап 4" },
-      { href: "/admin/analytics", label: isKy ? "Мониторинг" : "Мониторинг", icon: BarChart3, hint: isKy ? "Кайталанмалар" : "Повторные обращения" },
-      { href: "/admin/content", label: isKy ? "Контент сервиса" : "Контент сервиса", icon: FilePenLine, hint: isKy ? "Тексттер, эрежелер" : "Тексты, правила" },
-      { href: "/admin/eligibility", label: isKy ? "Дарак допуску" : "Дерево допуска", icon: GitBranch, hint: isKy ? "Категориялар жазылуу" : "Категории записи" },
-      { href: "/admin/settings", label: isKy ? "График" : "График приёма", icon: Settings, hint: isKy ? "Күндөр жана слоттор" : "Дни и слоты" },
-      { href: "/admin/help", label: isKy ? "Нускама" : "Инструкция", icon: BookOpen, hint: isKy ? "Кызматкерлер үчүн" : "Для сотрудников — по шагам" },
-    ],
-    [isKy]
-  );
+  const canQueue = role !== "responsible";
+  const canSettings =
+    role === "admin" || role === "leadership" || role === "reception";
+  const canAnalytics = role === "admin" || role === "leadership";
+  const canSurvey = canSettings;
+
+  const workNav: NavItem[] = useMemo(() => {
+    const items: NavItem[] = [
+      {
+        href: "/admin",
+        label: isKy ? "Бүгүн" : "Сегодня",
+        icon: LayoutDashboard,
+        exact: true,
+      },
+    ];
+    if (canQueue) {
+      items.push({
+        href: "/admin/inbox",
+        label: isKy ? "Өтүнмөлөр" : "Заявки",
+        icon: Inbox,
+        badge: pendingCount || undefined,
+      });
+      items.push({
+        href: "/admin/reception",
+        label: isKy ? "Кабыл алуу" : "Приём",
+        icon: Users,
+        prefixes: ["/admin/reception", "/admin/calendar"],
+      });
+    }
+    items.push({
+      href: "/admin/appeals",
+      label: isKy ? "Карточкалар" : "Карточки",
+      icon: FileText,
+    });
+    items.push({
+      href: "/admin/control",
+      label: isKy ? "Тапшырмалар" : "Поручения",
+      icon: ClipboardCheck,
+      badge: overdueCount || undefined,
+    });
+    return items;
+  }, [isKy, canQueue, pendingCount, overdueCount]);
+
+  const refNav: NavItem[] = useMemo(() => {
+    const items: NavItem[] = [];
+    if (canAnalytics) {
+      items.push({
+        href: "/admin/analytics",
+        label: isKy ? "Мониторинг" : "Мониторинг",
+        icon: BarChart3,
+      });
+    }
+    if (canSettings) {
+      items.push(
+        {
+          href: "/admin/content",
+          label: isKy ? "Сайт" : "Сайт",
+          icon: FilePenLine,
+        },
+        {
+          href: "/admin/eligibility",
+          label: isKy ? "Допуск" : "Допуск",
+          icon: GitBranch,
+        },
+        {
+          href: "/admin/settings",
+          label: isKy ? "График" : "График",
+          icon: Settings,
+        }
+      );
+    }
+    items.push({
+      href: "/admin/help",
+      label: isKy ? "Нускама" : "Инструкция",
+      icon: BookOpen,
+    });
+    return items;
+  }, [isKy, canAnalytics, canSettings]);
 
   const surveyNav: NavItem[] = useMemo(
     () => [
-      { href: "/admin/survey", label: isKy ? "Суроолор" : "Вопросы анкеты", icon: ClipboardList, exact: true, hint: isKy ? "Түзөтүү" : "Редактирование" },
-      { href: "/admin/survey/results", label: isKy ? "Жыйынтыктар" : "Результаты", icon: ChartColumn, hint: isKy ? "Статистика" : "Статистика ответов" },
+      {
+        href: "/admin/survey",
+        label: isKy ? "Суроолор" : "Вопросы",
+        icon: ClipboardList,
+        exact: true,
+      },
+      {
+        href: "/admin/survey/results",
+        label: isKy ? "Жыйынтыктар" : "Результаты",
+        icon: ChartColumn,
+      },
     ],
     [isKy]
   );
-
-  const nav = module === "survey" ? surveyNav : receptionNav;
 
   useEffect(() => {
     if (ready && !currentUser && pathname !== "/admin/login") {
@@ -104,23 +185,72 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   }
 
   const roleLabel: Record<string, string> = {
-    admin: "Администратор",
-    reception: isKy ? "Кабыл алуу" : "Приёмная",
-    leadership: isKy ? "Жетекчилик" : "Руководство",
-    responsible: isKy ? "Жооптуу" : "Ответственный",
+    admin: isKy ? "Администратор" : "Администратор",
+    reception: isKy ? "Отдел приёма" : "Отдел приёма граждан",
+    leadership:
+      currentUser.login === "predsedatel"
+        ? isKy
+          ? "Төрага"
+          : "Председатель"
+        : isKy
+          ? "Жетекчилик"
+          : "Руководство",
+    responsible: isKy ? "Исполнитель" : "Ответственный исполнитель",
   };
 
-  function switchModule(m: AdminModule) {
-    setAdminModule(m);
-    setOpen(false);
-    router.push(m === "survey" ? "/admin/survey" : "/admin");
+  function isActive(item: NavItem) {
+    const prefixes = item.prefixes || [item.href];
+    if (item.exact) return pathname === item.href;
+    return prefixes.some(
+      (p) => pathname === p || pathname.startsWith(p + "/")
+    );
   }
+
+  function renderNav(items: NavItem[]) {
+    return items.map((item) => {
+      const active = isActive(item);
+      const Icon = item.icon;
+      return (
+        <Link
+          key={item.href}
+          href={item.href}
+          onClick={() => setOpen(false)}
+          className={cn(
+            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition",
+            active
+              ? "bg-court-navy text-white shadow-sm"
+              : "text-slate-700 hover:bg-slate-50"
+          )}
+        >
+          <Icon
+            className={cn(
+              "h-4 w-4 shrink-0",
+              active ? "opacity-95" : "text-slate-400"
+            )}
+          />
+          <span className="min-w-0 flex-1 font-medium">{item.label}</span>
+          {item.badge ? (
+            <span
+              className={cn(
+                "rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none",
+                active ? "bg-white text-court-navy" : "bg-rose-600 text-white"
+              )}
+            >
+              {item.badge}
+            </span>
+          ) : null}
+        </Link>
+      );
+    });
+  }
+
+  const nav = workNav;
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] lg:flex">
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-[280px] max-w-[88vw] flex-col border-r border-slate-200/80 bg-white shadow-sm transition duration-200 ease-out lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex w-[260px] max-w-[88vw] flex-col border-r border-slate-200/80 bg-white shadow-sm transition duration-200 ease-out lg:static lg:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -133,52 +263,99 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
                 : "Верховный суд Кыргызской Республики"}
             </div>
             <div className="mt-0.5 text-[11px] font-medium text-slate-500">
-              {isKy ? "Кызматтык кабинет" : "Служебный кабинет"}
+              {isKy ? "Служебный кабинет" : "Служебный кабинет"}
             </div>
           </div>
-          <button type="button" className="rounded-md p-2 text-slate-500 hover:bg-slate-100 lg:hidden" onClick={() => setOpen(false)} aria-label="Закрыть">
+          <button
+            type="button"
+            className="rounded-md p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+            onClick={() => setOpen(false)}
+            aria-label="Закрыть"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <div className="border-b border-slate-100 p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-            {isKy ? "Модуль" : "Рабочее пространство"}
-          </div>
-          <div className="mt-2 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
-            <button type="button" onClick={() => switchModule("reception")} className={cn("rounded-md px-2 py-2 text-xs font-semibold transition", module === "reception" ? "bg-white text-court-navy shadow-sm" : "text-slate-500 hover:text-slate-800")}>
-              {isKy ? "Кабыл алуу" : "Приём граждан"}
-            </button>
-            <button type="button" onClick={() => switchModule("survey")} className={cn("rounded-md px-2 py-2 text-xs font-semibold transition", module === "survey" ? "bg-white text-court-navy shadow-sm" : "text-slate-500 hover:text-slate-800")}>
-              {isKy ? "Сурамжылоо" : "Опросник"}
-            </button>
-          </div>
-        </div>
-
-        <nav className="flex-1 space-y-0.5 overflow-y-auto p-2">
-          {nav.map((item) => {
-            const active = item.exact
-              ? pathname === item.href
-              : pathname === item.href || pathname.startsWith(item.href + "/");
-            const Icon = item.icon;
-            return (
-              <Link key={item.href} href={item.href} onClick={() => setOpen(false)} className={cn("group flex items-start gap-3 rounded-lg px-3 py-2.5 text-sm transition duration-150", active ? "bg-court-navy text-white shadow-sm" : "text-slate-700 hover:bg-slate-50")}>
-                <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", active ? "opacity-95" : "text-slate-400 group-hover:text-slate-600")} />
-                <span className="min-w-0">
-                  <span className="block font-medium leading-snug">{item.label}</span>
-                  {item.hint && <span className={cn("mt-0.5 block text-[11px] leading-snug", active ? "text-white/70" : "text-slate-400")}>{item.hint}</span>}
-                </span>
+        {canSurvey && (
+          <div className="shrink-0 border-b border-slate-100 p-2">
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
+              <Link
+                href="/admin"
+                onClick={() => {
+                  setAdminModule("reception");
+                  setOpen(false);
+                }}
+                className={cn(
+                  "rounded-md px-2 py-2 text-center text-[11px] font-semibold leading-tight transition",
+                  !survey
+                    ? "bg-white text-court-navy shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                {isKy ? "Жарандарды кабыл алуу" : "Приём граждан"}
               </Link>
-            );
-          })}
+              <Link
+                href="/admin/survey"
+                onClick={() => {
+                  setAdminModule("survey");
+                  setOpen(false);
+                }}
+                className={cn(
+                  "rounded-md px-2 py-2 text-center text-[11px] font-semibold leading-tight transition",
+                  survey
+                    ? "bg-white text-court-navy shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                {isKy ? "Сурамжылоо" : "Опросник"}
+              </Link>
+            </div>
+          </div>
+        )}
+
+        <nav className="flex-1 space-y-4 overflow-y-auto p-2">
+          {survey ? (
+            <div>
+              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                {isKy ? "Сурамжылоо" : "Опросник"}
+              </div>
+              <div className="space-y-0.5">{renderNav(surveyNav)}</div>
+            </div>
+          ) : (
+            <>
+              <div>
+                <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  {isKy ? "Жарандарды кабыл алуу" : "Приём граждан"}
+                </div>
+                <div className="space-y-0.5">{renderNav(nav)}</div>
+              </div>
+              <div>
+                <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                  {isKy ? "Маалымдама" : "Справочник"}
+                </div>
+                <div className="space-y-0.5">{renderNav(refNav)}</div>
+              </div>
+            </>
+          )}
         </nav>
 
         <div className="shrink-0 border-t border-slate-100 p-3">
           <div className="mb-2 rounded-lg bg-slate-50 px-3 py-2">
-            <div className="truncate text-sm font-semibold text-slate-900">{currentUser.fullName}</div>
-            <div className="truncate text-xs text-slate-500">{roleLabel[currentUser.role]} · {currentUser.position}</div>
+            <div className="truncate text-sm font-semibold text-slate-900">
+              {currentUser.fullName}
+            </div>
+            <div className="truncate text-xs text-slate-500">
+              {roleLabel[currentUser.role]}
+            </div>
           </div>
-          <button type="button" onClick={() => { logout(); router.push("/admin/login"); }} className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50">
+          <button
+            type="button"
+            onClick={() => {
+              logout();
+              router.push("/admin/login");
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+          >
             <LogOut className="h-4 w-4" />
             {isKy ? "Чыгуу" : "Выход"}
           </button>
@@ -186,31 +363,66 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       {open && (
-        <button type="button" className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-[1px] transition lg:hidden" onClick={() => setOpen(false)} aria-label="Закрыть меню" />
+        <button
+          type="button"
+          className="fixed inset-0 z-40 bg-slate-900/30 lg:hidden"
+          onClick={() => setOpen(false)}
+          aria-label="Закрыть меню"
+        />
       )}
 
       <div className="flex min-h-screen min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-slate-200/80 bg-white/90 px-3 backdrop-blur-md sm:h-16 sm:px-5">
-          <button type="button" className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-700 lg:hidden" onClick={() => setOpen(true)} aria-label="Меню">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-700 lg:hidden"
+            onClick={() => setOpen(true)}
+            aria-label="Меню"
+          >
             <Menu className="h-5 w-5" />
           </button>
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold text-slate-900">
-              {module === "survey" ? (isKy ? "Модуль: сурамжылоо" : "Модуль: опросник судов") : isKy ? "Модуль: жарандарды кабыл алуу" : "Модуль: приём граждан"}
+              {survey
+                ? isKy
+                  ? "Опросник работы судов"
+                  : "Опросник работы судов"
+                : isKy
+                  ? "Приём граждан"
+                  : "Приём граждан"}
             </div>
             <div className="hidden truncate text-xs text-slate-500 sm:block">
-              {isKy ? "Расмий кызматтык кабинет · демо" : "Официальный служебный кабинет · демо"}
+              {roleLabel[currentUser.role]} · {currentUser.position}
             </div>
           </div>
           <div className="ml-auto flex shrink-0 items-center gap-2">
+            {canQueue && pendingCount > 0 && !survey && (
+              <Link
+                href="/admin/inbox"
+                className="hidden items-center rounded-lg bg-court-navy px-3 py-1.5 text-xs font-semibold text-white hover:bg-court-navy/90 sm:inline-flex"
+              >
+                {isKy ? "Өтүнмөлөр" : "Заявки"}: {pendingCount}
+              </Link>
+            )}
             <LangSwitch />
-            <Link href={module === "survey" ? "/survey" : "/"} className="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50 sm:inline-flex">
+            <Link
+              href={survey ? "/survey" : "/"}
+              className="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:inline-flex"
+            >
               <ExternalLink className="h-3.5 w-3.5" />
-              {module === "survey" ? (isKy ? "Анкета" : "Анкета") : isKy ? "Бөлүм" : "Раздел граждан"}
+              {survey
+                ? isKy
+                  ? "Анкета"
+                  : "Анкета"
+                : isKy
+                  ? "Коомдук бөлүм"
+                  : "Публичный раздел"}
             </Link>
           </div>
         </header>
-        <main className="admin-page-enter flex-1 p-3 sm:p-5 lg:p-7">{children}</main>
+        <main className="admin-page-enter flex-1 p-3 sm:p-5 lg:p-7">
+          {children}
+        </main>
       </div>
     </div>
   );

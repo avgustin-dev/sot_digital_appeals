@@ -36,9 +36,11 @@ export const STAGE_ORDER: AppealStage[] = [
 ];
 
 export const STATUS_LABELS: Record<AppointmentStatus, string> = {
+  pending_review: "На проверке",
   confirmed: "Подтверждена",
   rescheduled: "Перенесена",
   cancelled: "Отменена",
+  rejected: "Не подтверждена",
   completed: "Проведена",
   no_show: "Неявка",
 };
@@ -46,8 +48,8 @@ export const STATUS_LABELS: Record<AppointmentStatus, string> = {
 export const PIPELINE_STEPS = [
   {
     key: "registration",
-    title: "Регистрация",
-    desc: "Запись на приём: ФИО, тема, дата и время",
+    title: "Заявка",
+    desc: "Запись как заявка: ФИО, тема, дата. Приёмная проверяет и подтверждает",
   },
   {
     key: "analysis",
