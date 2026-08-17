@@ -107,13 +107,6 @@ export function CourtContactsBlock({
                   </td>
                   <td className="!px-2 !py-2 text-sm font-medium">
                     {isKy ? row.fullNameKy : row.fullNameRu}
-                    {"noteRu" in row && row.noteRu && (
-                      <span className="mt-0.5 block text-[10px] font-normal text-slate-400">
-                        {isKy
-                          ? (row as { noteKy?: string }).noteKy
-                          : row.noteRu}
-                      </span>
-                    )}
                   </td>
                   <td className="!px-2 !py-2 text-xs text-slate-600">
                     {isKy ? row.positionKy : row.positionRu}
