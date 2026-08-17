@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown,
@@ -26,12 +26,7 @@ export default function AdminSurveyPage() {
     reorderSurveyQuestion,
     updateSurveyMeta,
     resetSurveyQuestions,
-    setAdminModule,
   } = useStore();
-
-  useEffect(() => {
-    setAdminModule("survey");
-  }, [setAdminModule]);
 
   const questions = useMemo(
     () =>

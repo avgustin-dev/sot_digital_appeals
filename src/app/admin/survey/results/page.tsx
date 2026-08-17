@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useStore } from "@/lib/store";
 import { PageLoader } from "@/components/ui/PageLoader";
@@ -11,11 +11,7 @@ import { Collapsible } from "@/components/ui/Collapsible";
  * Только статистика (без очистки / правок) — основное на opros.sot.kg.
  */
 export default function SurveyResultsPage() {
-  const { ready, state, setAdminModule } = useStore();
-
-  useEffect(() => {
-    setAdminModule("survey");
-  }, [setAdminModule]);
+  const { ready, state } = useStore();
 
   const questions = useMemo(
     () =>

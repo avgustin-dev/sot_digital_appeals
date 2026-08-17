@@ -60,12 +60,6 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   const survey = pathname.startsWith("/admin/survey");
   const role = currentUser?.role;
 
-  useEffect(() => {
-    if (pathname.startsWith("/admin/survey")) setAdminModule("survey");
-    else if (pathname.startsWith("/admin") && pathname !== "/admin/login")
-      setAdminModule("reception");
-  }, [pathname, setAdminModule]);
-
   const canQueue = role !== "responsible";
   const canSettings =
     role === "admin" || role === "leadership" || role === "reception";

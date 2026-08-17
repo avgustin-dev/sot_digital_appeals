@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -16,15 +16,11 @@ import { AdminHeading } from "@/components/staff/AdminHeading";
 import { targetShort } from "@/lib/targets";
 
 export default function StaffDashboardPage() {
-  const { state, currentUser, setAdminModule } = useStore();
+  const { state, currentUser } = useStore();
   const { lang } = useI18n();
   const isKy = lang === "ky";
   const today = new Date().toISOString().slice(0, 10);
   const role = currentUser?.role;
-
-  useEffect(() => {
-    setAdminModule("reception");
-  }, [setAdminModule]);
 
   const pending = useMemo(
     () =>

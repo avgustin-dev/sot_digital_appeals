@@ -65,6 +65,8 @@ function seedEligibilityTree(): EligibilityTreeNode[] {
   return cloneEligibilityTree() as EligibilityTreeNode[];
 }
 
+const FALLBACK_ELIGIBILITY = seedEligibilityTree();
+
 export type BookInput = {
   fullName: string;
   phone: string;
@@ -1425,7 +1427,8 @@ export const usePlatformStore = create<PlatformStore>()(
         });
       },
 
-      setAdminModule: (m) => set({ adminModule: m }),
+      setAdminModule: (m) =>
+        set((s) => (s.adminModule === m ? s : { adminModule: m })),
 
       resetServiceContent: () => {
         set({ serviceContent: mergeServiceContent() });
@@ -1577,18 +1580,18 @@ export function useStore() {
       appointments: store.appointments,
       appeals: store.appeals,
       session: store.session,
-      surveyMeta: store.surveyMeta ?? initialData().surveyMeta,
+      surveyMeta: store.surveyMeta ?? SEED_SURVEY_META,
       surveyQuestions:
         store.surveyQuestions?.length
           ? store.surveyQuestions
-          : initialData().surveyQuestions,
+          : SEED_SURVEY_QUESTIONS,
       surveyResponses: store.surveyResponses ?? [],
       serviceContent,
       adminModule: store.adminModule ?? "reception",
       eligibilityTree:
         store.eligibilityTree?.length
           ? store.eligibilityTree
-          : seedEligibilityTree(),
+          : FALLBACK_ELIGIBILITY,
     } satisfies PlatformState,
     currentUser,
     login: store.login,
