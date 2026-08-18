@@ -77,11 +77,14 @@ export default function StaffCalendarPage() {
     );
   }
 
-  function run(
-    fn: () => { ok: true } | { ok: false; error: string },
+  async function run(
+    fn: () =>
+      | Promise<{ ok: true } | { ok: false; error: string }>
+      | { ok: true }
+      | { ok: false; error: string },
     okMsg: string
   ) {
-    const res = fn();
+    const res = await fn();
     if (!res.ok) {
       setErr(true);
       setMsg(res.error);
@@ -196,7 +199,7 @@ export default function StaffCalendarPage() {
             <div className="px-5 py-10 text-center text-sm text-slate-500">
               {isKy
                 ? "Бул күнгө жазылуу жок."
-                : "На этот день записей нет. Гражданин записывается через публичный /book."}
+                : "На этот день записей нет. Гражданин записывается через публичный раздел электронной записи."}
             </div>
           ) : (
             <ul className="divide-y divide-slate-100">
@@ -402,8 +405,8 @@ export default function StaffCalendarPage() {
             {showFree && (
               <p className="mt-2 text-xs leading-relaxed text-slate-500">
                 {isKy
-                  ? "График жана узактыгы — «График приёма». Жарандар /book аркылуу бош терезени тандашат. Бул жерде негизги нерсе — ким качан жазылган."
-                  : "Дни и длительность слота настраиваются в «График приёма». Граждане сами выбирают свободное окно на /book. Здесь главное — кто и когда записан, а не сетка пустых интервалов."}
+                  ? "График жана узактыгы — «График приёма». Жарандар электрондук жазылуу бөлүмүндө бош терезени тандашат. Бул жерде негизги нерсе — ким качан жазылган."
+                  : "Дни и длительность слота настраиваются в «График приёма». Граждане сами выбирают свободное окно в разделе электронной записи. Здесь главное — кто и когда записан, а не сетка пустых интервалов."}
               </p>
             )}
           </div>

@@ -142,7 +142,7 @@ export default function ContentCmsPage() {
     setMsg("");
   }
 
-  function onSave(e: React.FormEvent) {
+  async function onSave(e: React.FormEvent) {
     e.preventDefault();
     if (!canEdit) {
       setErr(true);
@@ -153,7 +153,12 @@ export default function ContentCmsPage() {
       );
       return;
     }
-    updateServiceContent(draft);
+    const saved = await updateServiceContent(draft);
+    if (saved && "ok" in saved && !saved.ok) {
+      setErr(true);
+      setMsg(saved.error);
+      return;
+    }
     setErr(false);
     setMsg(isKy ? "Сакталды. Коомдук бөлүм жаңыртылды." : "Сохранено. Публичный раздел обновлён.");
   }
@@ -348,14 +353,14 @@ export default function ContentCmsPage() {
               />
               <Field
                 label="Сноска в подвале (RU)"
-                value={draft.footerDemoRu}
-                onChange={(v) => patch({ footerDemoRu: v })}
+                value={draft.footerDisclaimerRu}
+                onChange={(v) => patch({ footerDisclaimerRu: v })}
                 disabled={!canEdit}
               />
               <Field
                 label="Подвал эскертүүсү (KY)"
-                value={draft.footerDemoKy}
-                onChange={(v) => patch({ footerDemoKy: v })}
+                value={draft.footerDisclaimerKy}
+                onChange={(v) => patch({ footerDisclaimerKy: v })}
                 disabled={!canEdit}
               />
             </Pair>

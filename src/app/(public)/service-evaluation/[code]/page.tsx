@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FEEDBACK_QUESTIONS } from "@/lib/constants";
@@ -8,18 +8,22 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
 
 export default function FeedbackByCodePage() {
   const params = useParams();
   const code = String(params.code || "").toUpperCase();
-  const { ready, getAppealByCode, submitFeedback } = useStore();
+  const { ready, getAppealByCode, submitFeedback, lookupByCode } = useStore();
   const { t, lang } = useI18n();
   const isKy = lang === "ky";
 
-  const appeal = useMemo(
-    () => (ready ? getAppealByCode(code) : undefined),
-    [ready, code, getAppealByCode]
-  );
+  useEffect(() => {
+    if (!ready || !code) return;
+    void lookupByCode(code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, code]);
+
+  const appeal = getAppealByCode(code);
 
   const [scores, setScores] = useState<Record<string, number>>({
     respectful: 0,
@@ -57,7 +61,7 @@ export default function FeedbackByCodePage() {
               ? "Кодду текшериңиз же «Менин жазылууум» аркылуу кириңиз."
               : "Проверьте код или откройте раздел «Моя запись»."}
           </p>
-          <Link href="/my-appointment" className="btn-primary mt-4 inline-flex">
+          <Link href={routes.appointmentStatus} className="btn-primary mt-4 inline-flex">
             {t.nav.myAppointment}
           </Link>
         </div>
@@ -113,7 +117,7 @@ export default function FeedbackByCodePage() {
     );
   }
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     for (const q of FEEDBACK_QUESTIONS) {
@@ -126,7 +130,7 @@ export default function FeedbackByCodePage() {
         return;
       }
     }
-    const res = submitFeedback(code, {
+    const res = await submitFeedback(code, {
       respectful: scores.respectful,
       clearNextSteps: scores.clearNextSteps,
       convenient: scores.convenient,
@@ -173,7 +177,7 @@ export default function FeedbackByCodePage() {
           {FEEDBACK_QUESTIONS.map((q) => (
             <div key={q.key}>
               <div className="mb-2 text-sm font-medium text-court-ink">
-                {q.label}
+                {isKy ? q.labelKy || q.label : q.label}
               </div>
               <div className="flex flex-wrap gap-2">
                 {[1, 2, 3, 4, 5].map((n) => (

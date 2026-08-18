@@ -50,10 +50,10 @@ export function ReviewRequestPanel({
     onDone?.(ok, text);
   }
 
-  function onConfirm() {
+  async function onConfirm() {
     if (!currentUser) return;
     setBusy(true);
-    const res = confirmAppointmentRequest(
+    const res = await confirmAppointmentRequest(
       appointment.id,
       currentUser,
       note.trim() || undefined
@@ -69,10 +69,10 @@ export function ReviewRequestPanel({
     );
   }
 
-  function onReject() {
+  async function onReject() {
     if (!currentUser) return;
     setBusy(true);
-    const res = rejectAppointmentRequest(
+    const res = await rejectAppointmentRequest(
       appointment.id,
       currentUser,
       reason

@@ -1,11 +1,41 @@
 "use client";
 
+import { useState } from "react";
 import { COURT_CONTACTS } from "@/lib/constants";
 import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
 import { useStore } from "@/lib/store";
 import { formatDateRu } from "@/lib/slots";
 import { targetShort } from "@/lib/targets";
 import { EmblemKR } from "@/components/brand/Emblem";
+import { TicketQr } from "@/components/booking/TicketQr";
+
+function CopyValue({
+  value,
+  label,
+}: {
+  value: string;
+  label: string;
+}) {
+  const [done, setDone] = useState(false);
+  if (!value) return null;
+  return (
+    <button
+      type="button"
+      className="no-print ml-2 text-[10px] font-medium text-court-blue hover:underline"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          setDone(true);
+          window.setTimeout(() => setDone(false), 1500);
+        } catch {
+          /* ignore */
+        }
+      }}
+    >
+      {done ? "✓" : label}
+    </button>
+  );
+}
 
 export function VisitTicket({
   code,
@@ -37,7 +67,6 @@ export function VisitTicket({
     (a) => a.code === code || a.appointmentId === apt?.id
   );
   const latest = appeal?.notifications?.[0];
-  const qr = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(code)}`;
   return (
     <div
       id="booking-slip"
@@ -65,18 +94,35 @@ export function VisitTicket({
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
               {isKy ? "Код" : "Код записи"}
+              <CopyValue
+                value={code}
+                label={isKy ? "көчүрүү" : "копировать"}
+              />
             </div>
             <div className="font-mono text-xl font-bold text-court-navy">
               {code}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                PIN
-              </div>
-              <div className="font-mono text-lg font-bold">{pin}</div>
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+              PIN
+              {pin ? (
+                <CopyValue
+                  value={pin}
+                  label={isKy ? "көчүрүү" : "копировать"}
+                />
+              ) : null}
             </div>
+            <div className="font-mono text-lg font-bold">{pin || "••••"}</div>
+            {!pin ? (
+              <p className="text-[10px] text-slate-500">
+                {isKy
+                  ? "PIN ырастоо талонунда / катта"
+                  : "PIN — в талоне при подаче заявки"}
+              </p>
+            ) : null}
+          </div>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
                 {isKy ? "Кимге" : "К кому"}
@@ -101,17 +147,7 @@ export function VisitTicket({
             </div>
           </div>
         </div>
-        <div className="mx-auto text-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={qr}
-            alt={code}
-            width={140}
-            height={140}
-            className="mx-auto border border-court-line bg-white"
-          />
-          <div className="mt-1 font-mono text-[10px] text-slate-500">{code}</div>
-        </div>
+        <TicketQr code={code} isKy={isKy} />
       </div>
       {latest && (
         <div className="border-t border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-950">

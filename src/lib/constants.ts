@@ -1,29 +1,15 @@
 import type { AppealCategory, AppealStage, AppointmentStatus } from "./types";
+import { catalog } from "./catalog";
 
-export const APP_NAME =
-  "Цифровая платформа приёма граждан руководством";
-export const ORG_NAME =
-  "Верховный суд Кыргызской Республики";
-/** Полное наименование — не аббревиатура */
-export const ORG_SHORT = "Верховный суд Кыргызской Республики";
+const d = catalog.dictionaries;
 
-export const CATEGORY_LABELS: Record<AppealCategory, string> = {
-  organization: "Организация судопроизводства",
-  court_activity: "Деятельность суда",
-  legislation: "Предложения по законодательству",
-  other: "Иное (в рамках компетенции приёма)",
-};
+export const APP_NAME = d.appName;
+export const ORG_NAME = d.orgName;
+export const ORG_SHORT = d.orgShort;
 
-export const STAGE_LABELS: Record<AppealStage, string> = {
-  registered: "1. Регистрация",
-  under_review: "2. Предварительный анализ",
-  ready_for_reception: "2. Готово к приёму",
-  reception_done: "3. Личный приём",
-  in_control: "4. Контроль исполнения",
-  answered: "Ответ направлен",
-  closed: "Завершено",
-  cancelled: "Отменено",
-};
+export const CATEGORY_LABELS = d.categories as Record<AppealCategory, string>;
+export const STAGE_LABELS = d.stages as Record<AppealStage, string>;
+export const STATUS_LABELS = d.statuses as Record<AppointmentStatus, string>;
 
 export const STAGE_ORDER: AppealStage[] = [
   "registered",
@@ -35,203 +21,16 @@ export const STAGE_ORDER: AppealStage[] = [
   "closed",
 ];
 
-export const STATUS_LABELS: Record<AppointmentStatus, string> = {
-  pending_review: "На проверке",
-  confirmed: "Подтверждена",
-  rescheduled: "Перенесена",
-  cancelled: "Отменена",
-  rejected: "Не подтверждена",
-  completed: "Проведена",
-  no_show: "Неявка",
-};
-
-export const PIPELINE_STEPS = [
-  {
-    key: "registration",
-    title: "Заявка",
-    desc: "Запись как заявка: ФИО, тема, дата. Приёмная проверяет и подтверждает",
-  },
-  {
-    key: "analysis",
-    title: "Анализ",
-    desc: "Электронная карточка, предварительное изучение",
-  },
-  {
-    key: "reception",
-    title: "Личный приём",
-    desc: "Приём руководством, поручение, ответственный",
-  },
-  {
-    key: "control",
-    title: "Контроль",
-    desc: "Исполнение поручения, направление ответа",
-  },
-  {
-    key: "feedback",
-    title: "Обратная связь",
-    desc: "Оценка работы общественной приёмной",
-  },
-  {
-    key: "monitor",
-    title: "Мониторинг",
-    desc: "Повторные обращения, системные проблемы",
-  },
-] as const;
-
-export const RECEPTION_FORBIDDEN = [
-  "конкретные судебные дела",
-  "законность судебных решений",
-  "результаты рассмотрения дел",
-];
-
-export const RECEPTION_ALLOWED = [
-  "организация судопроизводства",
-  "деятельность суда",
-  "предложения по изменению законодательства КР",
-  "письменные обращения, поданные на приёме",
-];
-
-/** Регионы КР для формы заявителя */
-export const REGIONS_KR = [
-  { id: "bishkek", ru: "г. Бишкек", ky: "Бишкек ш." },
-  { id: "chui", ru: "Чуйская область", ky: "Чүй облусу" },
-  { id: "issyk", ru: "Иссык-Кульская область", ky: "Ысык-Көл облусу" },
-  { id: "naryn", ru: "Нарынская область", ky: "Нарын облусу" },
-  { id: "talas", ru: "Таласская область", ky: "Талас облусу" },
-  { id: "jalal", ru: "Джалал-Абадская область", ky: "Жалал-Абад облусу" },
-  { id: "osh", ru: "Ошская область", ky: "Ош облусу" },
-  { id: "osh_city", ru: "г. Ош", ky: "Ош ш." },
-  { id: "batken", ru: "Баткенская область", ky: "Баткен облусу" },
-] as const;
-
-/**
- * Контакты с официального раздела «График приёма граждан» (sot.kg).
- * Актуальные ФИО/дни при смене руководства — обновить здесь или вынести в CMS.
- */
-export const COURT_CONTACTS = {
-  trustPhone: "0 (312) 62-19-25",
-  trustPhoneTel: "+996312621925",
-  addressRu: "г. Бишкек, ул. Абдумомунова, 200",
-  addressKy: "Бишкек ш., Абдумомунов көч., 200",
-  receptionOfficeRu: "Кабинет № 111 (1 этаж) — предварительная запись",
-  receptionOfficeKy: "№ 111 кабинет (1-кабат) — алдын ала жазылуу",
-  sourceNoteRu:
-    "Сведения соответствуют публикуемому графику приёма граждан на сайте Верховного суда Кыргызской Республики (sot.kg).",
-  sourceNoteKy:
-    "Маалымат Кыргыз Республикасынын Жогорку сотунун сайтындагы (sot.kg) жарандарды кабыл алуу графигине ылайык.",
-} as const;
-
-/** Руководство / дни приёма (таблица с sot.kg «График приёма граждан») */
-export const LEADERSHIP_RECEPTION_SCHEDULE = [
-  {
-    id: "chairman",
-    fullNameRu: "Сатыев Медербек Асанбекович",
-    fullNameKy: "Сатыев Медербек Асанбекович",
-    positionRu: "Председатель Верховного суда Кыргызской Республики",
-    positionKy: "Кыргыз Республикасынын Жогорку сотунун Төрагасы",
-    weekdayRu: "Четверг",
-    weekdayKy: "Бейшемби",
-    timeRu: "09:00–12:00 (согласно предварительной записи)",
-    timeKy: "09:00–12:00 (алдын ала жазылуу боюнча)",
-  },
-  {
-    id: "deputy_1",
-    fullNameRu: "Мусаев Нурлан Алишерович",
-    fullNameKy: "Мусаев Нурлан Алишерович",
-    positionRu: "Заместитель Председателя Верховного суда КР",
-    positionKy: "КР Жогорку сотунун Төрагасынын орун басары",
-    weekdayRu: "По графику",
-    weekdayKy: "График боюнча",
-    timeRu: "Согласно предварительной записи",
-    timeKy: "Алдын ала жазылуу боюнча",
-
-  },
-  {
-    id: "deputy_bakirova",
-    fullNameRu: "Бакирова Нургуль Жакиповна",
-    fullNameKy: "Бакирова Нургуль Жакиповна",
-    positionRu: "Заместитель Председателя Верховного суда КР",
-    positionKy: "КР Жогорку сотунун Төрагасынын орун басары",
-    weekdayRu: "Вторник",
-    weekdayKy: "Шейшемби",
-    timeRu: "15:00–16:00 (согласно предварительной записи)",
-    timeKy: "15:00–16:00 (алдын ала жазылуу боюнча)",
-  },
-  {
-    id: "deputy_kamchybekov",
-    fullNameRu: "Камчыбеков Шералы Равшанбекович",
-    fullNameKy: "Камчыбеков Шералы Равшанбекович",
-    positionRu: "Заместитель Председателя Верховного суда КР",
-    positionKy: "КР Жогорку сотунун Төрагасынын орун басары",
-    weekdayRu: "Четверг",
-    weekdayKy: "Бейшемби",
-    timeRu: "09:00–10:00 (согласно предварительной записи)",
-    timeKy: "09:00–10:00 (алдын ала жазылуу боюнча)",
-  },
-] as const;
-
-/** К кому записывается — для формы /book (из графика + приёмная) */
-export const RECEPTION_TARGETS = [
-  {
-    id: "chairman",
-    ru: "Сатыев Медербек Асанбекович — Председатель Верховного суда КР",
-    ky: "Сатыев Медербек Асанбекович — Жогорку соттун Төрагасы",
-  },
-  {
-    id: "deputy_bakirova",
-    ru: "Бакирова Н. Ж. — Заместитель Председателя (вторник 15:00–16:00)",
-    ky: "Бакирова Н. Ж. — Төраганын орун басары (шейшемби 15:00–16:00)",
-  },
-  {
-    id: "deputy_kamchybekov",
-    ru: "Камчыбеков Ш. Р. — Заместитель Председателя (четверг 09:00–10:00)",
-    ky: "Камчыбеков Ш. Р. — Төраганын орун басары (бейшемби 09:00–10:00)",
-  },
-  {
-    id: "deputy_other",
-    ru: "Иной заместитель Председателя (по актуальному графику)",
-    ky: "Төраганын башка орун басары (актуалдуу график боюнча)",
-  },
-  {
-    id: "reception",
-    ru: "Общественная приёмная  — подготовка к приёму руководством",
-    ky: "Коомдук кабыл алуу  — жетекчиликке даярдоо",
-  },
-] as const;
-
-export const APPLICANT_TYPES = [
-  { id: "citizen", ru: "Физическое лицо (гражданин)", ky: "Жеке жак (жаран)" },
-  {
-    id: "legal",
-    ru: "Представитель юридического лица",
-    ky: "Юридикалык жактын өкүлү",
-  },
-  {
-    id: "rep",
-    ru: "Представитель гражданина (по доверенности)",
-    ky: "Жарандын өкүлү (ишеним кат)",
-  },
-] as const;
-
-/** Оценка сервиса: онлайн-запись + приём (критерии из предложения) */
-export const FEEDBACK_QUESTIONS = [
-  {
-    key: "convenient" as const,
-    label:
-      "Насколько удобен процесс электронной записи (сайт, выбор даты и времени, получение кода, перенос/отмена)?",
-  },
-  {
-    key: "clearNextSteps" as const,
-    label:
-      "Было ли понятно, какие действия последуют после записи и после приёма?",
-  },
-  {
-    key: "respectful" as const,
-    label:
-      "Было ли обеспечено уважительное отношение при работе общественной приёмной?",
-  },
-  {
-    key: "deadlinesMet" as const,
-    label: "Соблюдены ли заявленные сроки рассмотрения и ответа?",
-  },
-];
+export const PIPELINE_STEPS = d.pipeline;
+export const RECEPTION_ALLOWED = d.allowed;
+export const RECEPTION_FORBIDDEN = d.forbidden;
+export const REGIONS_KR = d.regions;
+export const COURT_CONTACTS = d.contacts;
+export const LEADERSHIP_RECEPTION_SCHEDULE = d.leadershipSchedule;
+export const RECEPTION_TARGETS = d.receptionTargets;
+export const APPLICANT_TYPES = d.applicantTypes;
+export const FEEDBACK_QUESTIONS = d.feedbackQuestions as {
+  key: "convenient" | "clearNextSteps" | "respectful" | "deadlinesMet";
+  label: string;
+  labelKy: string;
+}[];

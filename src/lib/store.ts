@@ -46,8 +46,10 @@ import { generateCode, generateId, generatePin, matchCitizen } from "./utils";
 import { formatDateRu, getAvailableSlotsForDate } from "./slots";
 import { targetShort } from "./targets";
 import { toStaffProfile, type StaffProfile } from "./staff";
-import { clearAccessToken } from "@/api/session";
-import { env } from "@/config/env";
+import { clearAccessToken, getAccessToken } from "@/api/session";
+import { backend } from "@/api/client";
+import { env, useRemoteApi } from "@/config/env";
+import { wrapRemote, withPin } from "./storeRemote";
 
 export const STORAGE_KEY = "vs-kr-citizen-platform-v8";
 const STATE_VERSION = 8;
@@ -125,7 +127,7 @@ type PlatformStore = PlatformState & {
     appointment: Appointment;
     appeal?: AppealCard;
   } | null;
-  /** Восстановление кода по телефону (демо) */
+  /** Восстановление кода по телефону */
   recoverCodesByPhone: (phone: string) => string[];
   cancelAppointment: (code: string, pin: string) => ResultOk | ResultErr;
   rescheduleAppointment: (
@@ -239,6 +241,21 @@ type PlatformStore = PlatformState & {
     node: EligibilityTreeNode
   ) => void;
   resetEligibilityTree: () => void;
+  upsertAppointment: (apt: Appointment) => void;
+  upsertAppeal: (apl: AppealCard) => void;
+  applyBootstrap: (payload: {
+    site: ServiceContent;
+    eligibilityTree: EligibilityTreeNode[];
+    calendar: CalendarSettings;
+    survey: { meta: SurveyMeta; questions: SurveyQuestion[] };
+  }) => void;
+  replaceStaffLists: (payload: {
+    appointments?: Appointment[];
+    appeals?: AppealCard[];
+    staff?: StaffUser[];
+    calendar?: CalendarSettings;
+    surveyResponses?: SurveyResponse[];
+  }) => void;
 };
 
 function initialData(): PlatformState {
@@ -1274,7 +1291,7 @@ export const usePlatformStore = create<PlatformStore>()(
                       at: now,
                       channel: "system" as const,
                       title: "Ответ по обращению готов",
-                      body: `По обращению ${a.code} подготовлен ответ. Оцените работу: /feedback/${a.code}`,
+                      body: `По обращению ${a.code} подготовлен ответ. Оцените работу: /service-evaluation/${a.code}`,
                       read: false,
                     },
                     ...a.notifications,
@@ -1484,6 +1501,46 @@ export const usePlatformStore = create<PlatformStore>()(
       resetEligibilityTree: () => {
         set({ eligibilityTree: seedEligibilityTree() });
       },
+
+      upsertAppointment: (apt) =>
+        set((s) => ({
+          appointments: s.appointments.some(
+            (a) => a.id === apt.id || a.code === apt.code
+          )
+            ? s.appointments.map((a) =>
+                a.id === apt.id || a.code === apt.code ? { ...a, ...apt } : a
+              )
+            : [...s.appointments, apt],
+        })),
+
+      upsertAppeal: (apl) =>
+        set((s) => ({
+          appeals: s.appeals.some(
+            (a) => a.id === apl.id || a.code === apl.code
+          )
+            ? s.appeals.map((a) =>
+                a.id === apl.id || a.code === apl.code ? { ...a, ...apl } : a
+              )
+            : [...s.appeals, apl],
+        })),
+
+      applyBootstrap: (payload) =>
+        set({
+          serviceContent: mergeServiceContent(payload.site),
+          eligibilityTree: payload.eligibilityTree,
+          calendar: payload.calendar,
+          surveyMeta: payload.survey.meta,
+          surveyQuestions: payload.survey.questions,
+        }),
+
+      replaceStaffLists: (payload) =>
+        set((s) => ({
+          appointments: payload.appointments ?? s.appointments,
+          appeals: payload.appeals ?? s.appeals,
+          staff: payload.staff ?? s.staff,
+          calendar: payload.calendar ?? s.calendar,
+          surveyResponses: payload.surveyResponses ?? s.surveyResponses,
+        })),
     }),
     {
       name: STORAGE_KEY,
@@ -1498,19 +1555,26 @@ export const usePlatformStore = create<PlatformStore>()(
       ),
       version: STATE_VERSION,
       skipHydration: false,
-      partialize: (s) => ({
-        version: s.version,
-        calendar: s.calendar,
-        appointments: s.appointments,
-        appeals: s.appeals,
-        session: s.session,
-        surveyMeta: s.surveyMeta,
-        surveyQuestions: s.surveyQuestions,
-        surveyResponses: s.surveyResponses,
-        serviceContent: s.serviceContent,
-        adminModule: s.adminModule,
-        eligibilityTree: s.eligibilityTree,
-      }),
+      partialize: (s) =>
+        env.apiUrl
+          ? {
+              version: s.version,
+              session: s.session,
+              adminModule: s.adminModule,
+            }
+          : {
+              version: s.version,
+              calendar: s.calendar,
+              appointments: s.appointments,
+              appeals: s.appeals,
+              session: s.session,
+              surveyMeta: s.surveyMeta,
+              surveyQuestions: s.surveyQuestions,
+              surveyResponses: s.surveyResponses,
+              serviceContent: s.serviceContent,
+              adminModule: s.adminModule,
+              eligibilityTree: s.eligibilityTree,
+            },
       migrate: (persisted) => {
         const p = persisted as Partial<PlatformState>;
         const base = initialData();
@@ -1549,6 +1613,10 @@ export const usePlatformStore = create<PlatformStore>()(
 export function useStore() {
   const store = usePlatformStore();
   const [ready, setReady] = useState(false);
+  const remote = wrapRemote(
+    store as never,
+    () => usePlatformStore.getState() as never
+  );
 
   useEffect(() => {
     const persistApi = usePlatformStore.persist;
@@ -1561,13 +1629,53 @@ export function useStore() {
       return;
     }
     const unsub = persistApi.onFinishHydration(() => setReady(true));
-    // fallback: localStorage rehydrate is usually sync after tick
     const t = window.setTimeout(() => setReady(true), 50);
     return () => {
       unsub?.();
       window.clearTimeout(t);
     };
   }, []);
+
+  useEffect(() => {
+    if (!ready || !useRemoteApi) return;
+    let cancelled = false;
+    (async () => {
+      const s = usePlatformStore.getState();
+      try {
+        const boot = await backend.public.bootstrap();
+        if (!cancelled) s.applyBootstrap(boot);
+      } catch {
+        /* каталог content/ остаётся источником */
+      }
+      const token = getAccessToken();
+      if (!token || cancelled) return;
+      try {
+        const me = await backend.auth.me();
+        if (cancelled) return;
+        s.hydrateStaffSession(me);
+        const [apts, appeals, users, cal, surveyRes] = await Promise.all([
+          backend.staff.appointments(),
+          backend.staff.appeals(),
+          backend.staff.users(),
+          backend.staff.getCalendar(),
+          backend.staff.surveyResponses().catch(() => [] as never),
+        ]);
+        if (cancelled) return;
+        s.replaceStaffLists({
+          appointments: apts.map((a) => withPin(a)),
+          appeals,
+          staff: users.map((u) => ({ ...u, password: "" })),
+          calendar: cal,
+          surveyResponses: surveyRes,
+        });
+      } catch {
+        s.logout();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [ready]);
 
   const currentUser = store.session
     ? (() => {
@@ -1608,47 +1716,48 @@ export function useStore() {
     hydrateStaffSession: store.hydrateStaffSession,
     logout: store.logout,
     resetDemo: store.resetDemo,
-    updateCalendar: store.updateCalendar,
-    bookAppointment: store.bookAppointment,
-    confirmAppointmentRequest: store.confirmAppointmentRequest,
-    rejectAppointmentRequest: store.rejectAppointmentRequest,
-    findAppointment: store.findAppointment,
-    lookupByCode: store.lookupByCode,
-    recoverCodesByPhone: store.recoverCodesByPhone,
-    cancelAppointment: store.cancelAppointment,
-    rescheduleAppointment: store.rescheduleAppointment,
-    staffCancelAppointment: store.staffCancelAppointment,
-    staffRestoreAppointment: store.staffRestoreAppointment,
-    staffSetAppointmentStatus: store.staffSetAppointmentStatus,
-    staffRescheduleAppointment: store.staffRescheduleAppointment,
-    staffUpdateCitizenData: store.staffUpdateCitizenData,
-    staffSetAppealStage: store.staffSetAppealStage,
+    updateCalendar: remote.updateCalendar,
+    bookAppointment: remote.bookAppointment,
+    confirmAppointmentRequest: remote.confirmAppointmentRequest,
+    rejectAppointmentRequest: remote.rejectAppointmentRequest,
+    findAppointment: remote.findAppointment,
+    lookupByCode: remote.lookupByCode,
+    recoverCodesByPhone: remote.recoverCodesByPhone,
+    cancelAppointment: remote.cancelAppointment,
+    rescheduleAppointment: remote.rescheduleAppointment,
+    staffCancelAppointment: remote.staffCancelAppointment,
+    staffRestoreAppointment: remote.staffRestoreAppointment,
+    staffSetAppointmentStatus: remote.staffSetAppointmentStatus,
+    staffRescheduleAppointment: remote.staffRescheduleAppointment,
+    staffUpdateCitizenData: remote.staffUpdateCitizenData,
+    staffSetAppealStage: remote.staffSetAppealStage,
     updateAppeal: store.updateAppeal,
-    startPrep: store.startPrep,
-    completePrep: store.completePrep,
-    markReadyForReception: store.markReadyForReception,
-    completeReception: store.completeReception,
-    addControlLog: store.addControlLog,
-    setAssignmentStatus: store.setAssignmentStatus,
-    submitFinalAnswer: store.submitFinalAnswer,
-    submitFeedback: store.submitFeedback,
+    startPrep: remote.startPrep,
+    completePrep: remote.completePrep,
+    markReadyForReception: remote.markReadyForReception,
+    completeReception: remote.completeReception,
+    addControlLog: remote.addControlLog,
+    setAssignmentStatus: remote.setAssignmentStatus,
+    submitFinalAnswer: remote.submitFinalAnswer,
+    submitFeedback: remote.submitFeedback,
     getAppealByCode: store.getAppealByCode,
     getPreviousAppeals: store.getPreviousAppeals,
-    updateSurveyMeta: store.updateSurveyMeta,
-    saveSurveyQuestion: store.saveSurveyQuestion,
-    deleteSurveyQuestion: store.deleteSurveyQuestion,
-    reorderSurveyQuestion: store.reorderSurveyQuestion,
-    resetSurveyQuestions: store.resetSurveyQuestions,
+    updateSurveyMeta: remote.updateSurveyMeta,
+    saveSurveyQuestion: remote.saveSurveyQuestion,
+    deleteSurveyQuestion: remote.deleteSurveyQuestion,
+    reorderSurveyQuestion: remote.reorderSurveyQuestion,
+    resetSurveyQuestions: remote.resetSurveyQuestions,
+    pushSurvey: remote.pushSurvey,
     submitSurveyResponse: store.submitSurveyResponse,
     clearSurveyResponses: store.clearSurveyResponses,
-    updateServiceContent: store.updateServiceContent,
+    updateServiceContent: remote.updateServiceContent,
     updateBookingRules: store.updateBookingRules,
     setAdminModule: store.setAdminModule,
     resetServiceContent: store.resetServiceContent,
-    setEligibilityTree: store.setEligibilityTree,
-    patchEligibilityNode: store.patchEligibilityNode,
-    removeEligibilityNode: store.removeEligibilityNode,
-    addEligibilityNode: store.addEligibilityNode,
-    resetEligibilityTree: store.resetEligibilityTree,
+    setEligibilityTree: remote.setEligibilityTree,
+    patchEligibilityNode: remote.patchEligibilityNode,
+    removeEligibilityNode: remote.removeEligibilityNode,
+    addEligibilityNode: remote.addEligibilityNode,
+    resetEligibilityTree: remote.resetEligibilityTree,
   };
 }

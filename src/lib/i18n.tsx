@@ -7,19 +7,42 @@ import {
   useEffect,
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
-import { ru } from "@/locales/ru";
-import { ky } from "@/locales/ky";
+import { catalog } from "@/lib/catalog";
 import type { Dict } from "@/locales/types";
 
 export type Lang = "ru" | "ky";
 
 const LANG_KEY = "vs-kr-lang";
+const LANG_COOKIE = "vs-kr-lang";
 
 const dicts: Record<Lang, Dict> = {
-  ru: ru as unknown as Dict,
-  ky,
+  ru: catalog.uiRu,
+  ky: catalog.uiKy,
 };
+
+function readStoredLang(): Lang {
+  if (typeof window === "undefined") return "ky";
+  try {
+    const fromStore = localStorage.getItem(LANG_KEY);
+    if (fromStore === "ru" || fromStore === "ky") return fromStore;
+    const match = document.cookie.match(/(?:^|; )vs-kr-lang=(ky|ru)/);
+    if (match?.[1] === "ru" || match?.[1] === "ky") return match[1];
+  } catch {
+    /* ignore */
+  }
+  return "ky";
+}
+
+function persistLang(lang: Lang) {
+  try {
+    localStorage.setItem(LANG_KEY, lang);
+    document.cookie = `${LANG_COOKIE}=${lang};path=/;max-age=31536000;SameSite=Lax`;
+  } catch {
+    /* ignore */
+  }
+}
 
 type I18nApi = {
   lang: Lang;
@@ -30,28 +53,21 @@ type I18nApi = {
 
 const I18nContext = createContext<I18nApi | null>(null);
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("ru");
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Lang>("ky");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(LANG_KEY) as Lang | null;
-      if (saved === "ru" || saved === "ky") setLangState(saved);
-    } catch {
-      /* ignore */
-    }
+    const saved = readStoredLang();
+    setLangState(saved);
+    persistLang(saved);
     setReady(true);
   }, []);
 
   useEffect(() => {
     if (!ready) return;
-    document.documentElement.lang = lang === "ky" ? "ky" : "ru";
-    try {
-      localStorage.setItem(LANG_KEY, lang);
-    } catch {
-      /* ignore */
-    }
+    document.documentElement.lang = lang;
+    persistLang(lang);
   }, [lang, ready]);
 
   const setLang = useCallback((l: Lang) => setLangState(l), []);

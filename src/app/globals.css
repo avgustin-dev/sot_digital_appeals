@@ -127,6 +127,18 @@ a {
   border-radius: 0;
 }
 
+@keyframes court-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.court-loader-ring {
+  border: 2px solid rgba(197, 160, 89, 0.22);
+  border-top-color: #c5a059;
+  border-right-color: #1a3658;
+  animation: court-loader-spin 0.85s linear infinite;
+}
+
 @media print {
   .no-print {
     display: none !important;
@@ -140,6 +152,22 @@ a {
   }
   .card {
     border: 1px solid #999 !important;
+  }
+  .print-ticket-root * {
+    visibility: hidden !important;
+  }
+  .print-ticket-root #booking-slip,
+  .print-ticket-root #booking-slip * {
+    visibility: visible !important;
+  }
+  .print-ticket-root #booking-slip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    overflow: visible;
+    border: 1px solid #1a3658 !important;
+    box-shadow: none !important;
   }
 }
 
@@ -191,6 +219,18 @@ a {
 }
 .wizard-step-enter {
   animation: step-in 0.28s ease-out both;
+}
+
+/* Кольцо загрузки: золото портала, не оборванный квадрат */
+.court-loader-ring {
+  border: 2px solid rgba(197, 160, 89, 0.22);
+  border-top-color: #c5a059;
+  animation: court-loader-spin 0.85s linear infinite;
+}
+@keyframes court-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Таблицы служебного кабинета */

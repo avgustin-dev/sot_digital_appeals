@@ -10,11 +10,10 @@ import {
   parseDateList,
   timeToMinutes,
 } from "@/lib/slots";
-import { RotateCcw, Save } from "lucide-react";
+import { Save } from "lucide-react";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Collapsible } from "@/components/ui/Collapsible";
 import { useI18n } from "@/lib/i18n";
-import { env } from "@/config/env";
 
 const WEEKDAYS = [
   { v: 1, l: "Понедельник" },
@@ -30,7 +29,7 @@ const WEEKDAYS = [
 const TIME_OPTIONS = generateTimeOptions(6 * 60, 22 * 60, 5);
 
 export default function SettingsPage() {
-  const { state, currentUser, updateCalendar, resetDemo } = useStore();
+  const { state, currentUser, updateCalendar } = useStore();
   const { t, lang } = useI18n();
   const isKy = lang === "ky";
   const cal = state.calendar;
@@ -79,10 +78,10 @@ export default function SettingsPage() {
     );
   }
 
-  function onSave(e: React.FormEvent) {
+  async function onSave(e: React.FormEvent) {
     e.preventDefault();
     if (!canEdit) return;
-    updateCalendar({
+    const res = await updateCalendar({
       receptionWeekdays: weekdays,
       dayStartMinutes: timeToMinutes(start),
       dayEndMinutes: timeToMinutes(end),
@@ -93,6 +92,10 @@ export default function SettingsPage() {
       extraOpenDates: parseDateList(extra),
       rulesText: rules,
     });
+    if (res && "ok" in res && !res.ok) {
+      setMsg(res.error);
+      return;
+    }
     setMsg(
       isKy
         ? "График сакталды."
@@ -147,7 +150,7 @@ export default function SettingsPage() {
                       : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
                   }`}
                 >
-                  {d.l}
+                  {t.calendar.weekdays[d.v]}
                 </button>
               ))}
             </div>
@@ -331,31 +334,6 @@ export default function SettingsPage() {
               <Save className="h-4 w-4" />
               {isKy ? "Сактоо" : "Сохранить"}
             </button>
-            {currentUser?.role === "admin" && env.demo && (
-              <button
-                type="button"
-                className="btn-outline"
-                onClick={() => {
-                  if (
-                    confirm(
-                      isKy
-                        ? "Демо-маалыматты баштапкы абалга кайтаруу?"
-                        : "Сбросить демонстрационные данные?"
-                    )
-                  ) {
-                    resetDemo();
-                    setMsg(
-                      isKy
-                        ? "Демо калыбына келтирилди."
-                        : "Демонстрационные данные восстановлены."
-                    );
-                  }
-                }}
-              >
-                <RotateCcw className="h-4 w-4" />
-                {isKy ? "Демо сброс" : "Сброс демо"}
-              </button>
-            )}
           </div>
         </div>
       </form>

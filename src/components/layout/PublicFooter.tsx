@@ -5,6 +5,7 @@ import { useI18n } from "@/lib/i18n";
 import { EmblemKR } from "@/components/brand/Emblem";
 import { useStore } from "@/lib/store";
 import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
+import { routes } from "@/lib/routes";
 
 export function PublicFooter() {
   const { t, lang } = useI18n();
@@ -14,13 +15,17 @@ export function PublicFooter() {
   const org = pickLocale(isKy, sc.orgNameRu, sc.orgNameKy) || t.orgName;
   const app = pickLocale(isKy, sc.appNameRu, sc.appNameKy) || t.appName;
   const c = sc.contacts;
-  const bookLabel =
-    sc.headerNav.find((l) => l.href === "/book")?.labelRu &&
-    pickLocale(
-      isKy,
-      sc.headerNav.find((l) => l.href === "/book")?.labelRu,
-      sc.headerNav.find((l) => l.href === "/book")?.labelKy
+  const disclaimer = pickLocale(
+    isKy,
+    sc.footerDisclaimerRu,
+    sc.footerDisclaimerKy
+  );
+  const navLabel = (href: string, fallback: string) => {
+    const item = sc.headerNav.find((l) => l.href === href);
+    return (
+      pickLocale(isKy, item?.labelRu, item?.labelKy) || fallback
     );
+  };
 
   return (
     <footer className="no-print mt-auto border-t-2 border-court-navy bg-court-deep text-white">
@@ -35,7 +40,7 @@ export function PublicFooter() {
           </div>
           <p className="text-sm leading-relaxed text-white/65">
             {pickLocale(isKy, sc.footerReceptionRu, sc.footerReceptionKy)}.{" "}
-            {pickLocale(isKy, sc.footerDemoRu, sc.footerDemoKy)}.
+            {disclaimer}.
           </p>
           <p className="mt-3 text-xs leading-relaxed text-white/55">
             {pickLocale(isKy, c.addressRu, c.addressKy)}
@@ -56,34 +61,27 @@ export function PublicFooter() {
           </div>
           <ul className="space-y-2 text-sm text-white/80">
             <li>
-              <Link href="/book" className="hover:text-white hover:underline">
-                {bookLabel || t.nav.book}
+              <Link
+                href={routes.appointment}
+                className="hover:text-white hover:underline"
+              >
+                {navLabel(routes.appointment, t.nav.book)}
               </Link>
             </li>
             <li>
               <Link
-                href="/my-appointment"
+                href={routes.appointmentStatus}
                 className="hover:text-white hover:underline"
               >
-                {pickLocale(
-                  isKy,
-                  sc.headerNav.find((l) => l.href === "/my-appointment")
-                    ?.labelRu,
-                  sc.headerNav.find((l) => l.href === "/my-appointment")
-                    ?.labelKy
-                ) || t.nav.myAppointment}
+                {navLabel(routes.appointmentStatus, t.nav.myAppointment)}
               </Link>
             </li>
             <li>
               <Link
-                href="/feedback"
+                href={routes.evaluation}
                 className="hover:text-white hover:underline"
               >
-                {pickLocale(
-                  isKy,
-                  sc.headerNav.find((l) => l.href === "/feedback")?.labelRu,
-                  sc.headerNav.find((l) => l.href === "/feedback")?.labelKy
-                ) || t.nav.feedback}
+                {navLabel(routes.evaluation, t.nav.feedback)}
               </Link>
             </li>
           </ul>
@@ -95,12 +93,11 @@ export function PublicFooter() {
           </div>
           <ul className="space-y-2 text-sm text-white/80">
             <li>
-              <Link href="/rules" className="hover:text-white hover:underline">
-                {pickLocale(
-                  isKy,
-                  sc.headerNav.find((l) => l.href === "/rules")?.labelRu,
-                  sc.headerNav.find((l) => l.href === "/rules")?.labelKy
-                ) || t.footer.rules}
+              <Link
+                href={routes.rules}
+                className="hover:text-white hover:underline"
+              >
+                {navLabel(routes.rules, t.footer.rules)}
               </Link>
             </li>
           </ul>
@@ -128,7 +125,7 @@ export function PublicFooter() {
           <span>
             © {new Date().getFullYear()} {org}
           </span>
-          <span>{pickLocale(isKy, sc.footerDemoRu, sc.footerDemoKy)}</span>
+          <span>{disclaimer}</span>
         </div>
       </div>
     </footer>

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { generateId } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -157,7 +158,7 @@ export default function EligibilityCmsPage() {
     setErr(false);
   }
 
-  function onSave(e: React.FormEvent) {
+  async function onSave(e: React.FormEvent) {
     e.preventDefault();
     if (!canEdit || !draft) {
       setErr(true);
@@ -202,7 +203,12 @@ export default function EligibilityCmsPage() {
       }
     }
 
-    patchEligibilityNode(draft.id, patch);
+    const saved = await patchEligibilityNode(draft.id, patch);
+    if (saved && "ok" in saved && !saved.ok) {
+      setErr(true);
+      setMsg(saved.error);
+      return;
+    }
     setErr(false);
     setMsg(isKy ? "Сакталды. Жарандардын жазылуусунда көрүнөт." : "Сохранено. Отображается в записи граждан.");
   }
@@ -315,7 +321,7 @@ export default function EligibilityCmsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/book"
+            href={routes.appointment}
             target="_blank"
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
           >

@@ -178,7 +178,7 @@ export interface NotificationItem {
   read: boolean;
 }
 
-/** ——— Опросник судов (демо, opros.sot) ——— */
+/** ——— Опросник судов (модуль в разработке; opros.sot.kg) ——— */
 
 export type SurveyQuestionType = "single" | "text";
 
@@ -311,8 +311,8 @@ export interface ServiceContent {
   hubNav: HubNavCard[];
   footerReceptionRu: string;
   footerReceptionKy: string;
-  footerDemoRu: string;
-  footerDemoKy: string;
+  footerDisclaimerRu: string;
+  footerDisclaimerKy: string;
   footerIndependenceRu: string;
   footerIndependenceKy: string;
   footerNoCasesRu: string;

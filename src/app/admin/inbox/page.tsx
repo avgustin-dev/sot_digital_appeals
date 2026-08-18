@@ -11,7 +11,6 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { formatDateRu, weekdayRu } from "@/lib/slots";
 import { targetShort } from "@/lib/targets";
 import { useI18n } from "@/lib/i18n";
-import { CATEGORY_LABELS } from "@/lib/constants";
 
 export default function InboxPage() {
   const { state } = useStore();
@@ -130,7 +129,7 @@ export default function InboxPage() {
                           {isKy ? "Категория" : "Категория"}
                         </dt>
                         <dd className="font-medium">
-                          {CATEGORY_LABELS[apt.category]}
+                          {t.categories[apt.category]}
                         </dd>
                       </div>
                     </dl>

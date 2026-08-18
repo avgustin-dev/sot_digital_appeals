@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { FileDown } from "lucide-react";
 import { useStore } from "@/lib/store";
-import { CATEGORY_LABELS, STAGE_LABELS } from "@/lib/constants";
 import { average, normalizePhone } from "@/lib/utils";
 import type { AppealCard } from "@/lib/types";
 import { downloadAppealsReport } from "@/lib/pdfReport";
@@ -82,13 +81,13 @@ export default function AnalyticsPage() {
 
     const stageItems = Object.entries(byStage).map(([k, v]) => ({
       key: k,
-      label: STAGE_LABELS[k as keyof typeof STAGE_LABELS] || k,
+      label: t.stages[k] || k,
       value: v,
     }));
 
     const catItems = Object.entries(byCategory).map(([k, v]) => ({
       key: k,
-      label: CATEGORY_LABELS[k as keyof typeof CATEGORY_LABELS] || k,
+      label: t.categories[k] || k,
       value: v,
     }));
 
@@ -110,7 +109,7 @@ export default function AnalyticsPage() {
       catItems,
       qualityItems,
     };
-  }, [appeals, all, isKy]);
+  }, [appeals, all, isKy, t]);
 
   return (
     <div className="space-y-5">
@@ -139,6 +138,7 @@ export default function AnalyticsPage() {
               title: t.admin.reportTitle,
               subtitle: t.admin.reportSubtitle,
               orgName: t.orgName,
+              lang,
             })
           }
         >

@@ -7,6 +7,7 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { Collapsible } from "@/components/ui/Collapsible";
 import { useI18n } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
 import { mergeServiceContent } from "@/lib/serviceContent";
 import { BOOKING_RULES } from "@/lib/eligibility";
 import { CourtContactsBlock } from "@/components/ui/CourtContactsBlock";
@@ -197,7 +198,7 @@ export default function RulesPage() {
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
-        <Link href="/book" className="btn-primary">
+        <Link href={routes.appointment} className="btn-primary">
           {isKy ? "Жазылуу" : "Записаться"}
         </Link>
         <Link href="/" className="btn-outline">

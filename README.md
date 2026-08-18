@@ -1,6 +1,8 @@
 # Цифровая платформа приёма граждан
 
-Верховный суд Кыргызской Республики. Фронт: Next.js. Бэкенд подключается отдельно.
+Фронт: Next.js. Бэкенд подключается по контракту `docs/backend/`.
+
+**Если вы собираете API:** откройте `docs/backend/ENDPOINTS.md` и `docs/backend/openapi.yaml`. Фронт уже вызывает эти методы из `src/api/client.ts`.
 
 ## Запуск
 
@@ -14,7 +16,7 @@ http://localhost:3000 · служебный кабинет: http://localhost:300
 
 ## Подключение бэкенда
 
-Контракт: `src/api/contract.ts`. Клиент: `src/api/http.ts`.
+Спека: `docs/backend/openapi.yaml`. Клиент, который уже вызывает фронт: `src/api/client.ts`. Обзор для генерации API: `ARCHITECTURE.md`.
 
 В `.env.local`:
 
@@ -24,13 +26,9 @@ NEXT_PUBLIC_API_URL=https://host/api/v1
 
 Пока URL пуст, данные живут в браузере. Пароли сотрудников в localStorage не пишутся.
 
-Статичные тексты (сайт, UI, правила, дерево допуска, опросник, справочники) лежат в `content/`. Пересборка: `npm run export:content`.
+Статичные тексты — папка `content/` (их же отдаёт `GET /public/bootstrap`).
 
-Контракт для Java-бэкенда: `docs/backend/` (OpenAPI + примеры JSON). Клиент фронта: `src/api/client.ts`.
-
-## Учебный вход (только разработка)
-
-В production список логинов скрыт. Локально: `predsedatel / vs2026`, `priemnaya / priem123`.
+Публичные адреса для писем и талона: `/electronic-appointment`, `/appointment-status`, `/service-evaluation/{code}`.
 
 ## Стек
 

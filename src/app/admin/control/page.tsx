@@ -16,15 +16,16 @@ import { Collapsible } from "@/components/ui/Collapsible";
 import { AdminHeading } from "@/components/staff/AdminHeading";
 import { ClipboardCheck } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 const ACTION_PRESETS = [
-  "Ход исполнения",
-  "Запрос документов",
-  "Согласование",
-  "Напоминание ответственному",
-  "Частичное исполнение",
-  "Готово к ответу",
+  { ru: "Ход исполнения", ky: "Аткаруунун жүрүшү" },
+  { ru: "Запрос документов", ky: "Документтерди суроо" },
+  { ru: "Согласование", ky: "Макулдашуу" },
+  { ru: "Напоминание ответственному", ky: "Жооптууга эскертүү" },
+  { ru: "Частичное исполнение", ky: "Жарым-жартылай аткаруу" },
+  { ru: "Готово к ответу", ky: "Жоопко даяр" },
 ];
 
 export default function ControlPage() {
@@ -41,7 +42,7 @@ export default function ControlPage() {
   const [filter, setFilter] = useState<"all" | "open" | "overdue" | "done">(
     "all"
   );
-  const [action, setAction] = useState(ACTION_PRESETS[0]);
+  const [action, setAction] = useState(ACTION_PRESETS[0].ru);
   const [comment, setComment] = useState("");
   const [answer, setAnswer] = useState("");
   const [msg, setMsg] = useState("");
@@ -120,28 +121,46 @@ export default function ControlPage() {
     return { open, overdue, done, all: base.length };
   }, [state.appeals, today]);
 
-  function onLog(e: React.FormEvent) {
+  async function onLog(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !selected) return;
-    addControlLog(selected.id, currentUser, action, comment);
-    setAssignmentStatus(selected.id, "in_progress");
+    const rec = await addControlLog(selected.id, currentUser, action, comment);
+    if (rec && "ok" in rec && !rec.ok) {
+      setErr(true);
+      setMsg(rec.error);
+      return;
+    }
+    await setAssignmentStatus(selected.id, "in_progress");
     setComment("");
     setErr(false);
-    setMsg("Запись в журнале добавлена.");
+    setMsg(isKy ? "Журналга жазуу кошулду." : "Запись в журнале добавлена.");
   }
 
-  function onAnswer(e: React.FormEvent) {
+  async function onAnswer(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !selected) return;
     if (answer.trim().length < 20) {
       setErr(true);
-      setMsg("Ответ слишком короткий (минимум ~20 символов).");
+      setMsg(
+        isKy
+          ? "Жооп өтө кыска (кеминде ~20 белги)."
+          : "Ответ слишком короткий (минимум ~20 символов)."
+      );
       return;
     }
-    submitFinalAnswer(selected.id, currentUser, answer);
+    const sent = await submitFinalAnswer(selected.id, currentUser, answer);
+    if (sent && "ok" in sent && !sent.ok) {
+      setErr(true);
+      setMsg(sent.error);
+      return;
+    }
     setAnswer("");
     setErr(false);
-    setMsg("Ответ направлен. Гражданин может оценить: /feedback/" + selected.code);
+    setMsg(
+      isKy
+        ? `Жооп жөнөтүлдү. Жаран баалай алат: ${routes.evaluationByCode(selected.code)}`
+        : `Ответ направлен. Гражданин может оценить: ${routes.evaluationByCode(selected.code)}`
+    );
   }
 
   function isOverdue(a: typeof selected) {
@@ -331,8 +350,12 @@ export default function ControlPage() {
                       <button
                         key={st}
                         type="button"
-                        onClick={() => {
-                          setAssignmentStatus(selected.id, st);
+                        onClick={async () => {
+                          const res = await setAssignmentStatus(selected.id, st);
+                          if (res && "ok" in res && !res.ok) {
+                            setMsg(res.error);
+                            return;
+                          }
                           setMsg(
                             isKy
                               ? `Статус: ${st}`
@@ -369,8 +392,8 @@ export default function ControlPage() {
                       onChange={(e) => setAction(e.target.value)}
                     >
                       {ACTION_PRESETS.map((p) => (
-                        <option key={p} value={p}>
-                          {p}
+                        <option key={p.ru} value={p.ru}>
+                          {isKy ? p.ky : p.ru}
                         </option>
                       ))}
                     </select>
@@ -418,7 +441,7 @@ export default function ControlPage() {
                   subtitle={
                     isKy
                       ? "Жөнөтүлгөндөн кийин баалоо жеткиликтүү"
-                      : "После отправки доступна оценка /feedback"
+                      : "После отправки доступна оценка сервиса"
                   }
                   defaultOpen
                 >
@@ -448,10 +471,10 @@ export default function ControlPage() {
                 <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
                   {isKy ? "Жооп жөнөтүлдү." : "Ответ направлен."}{" "}
                   <Link
-                    href={`/feedback/${selected.code}`}
+                    href={routes.evaluationByCode(selected.code)}
                     className="font-semibold underline"
                   >
-                    /feedback/{selected.code}
+                    {routes.evaluationByCode(selected.code)}
                   </Link>
                 </div>
               )}

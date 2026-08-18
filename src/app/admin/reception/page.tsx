@@ -69,7 +69,7 @@ export default function ReceptionPage() {
     currentUser &&
     ["leadership", "admin", "reception"].includes(currentUser.role);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
     setMsg("");
@@ -83,7 +83,7 @@ export default function ReceptionPage() {
       setErr("Выберите ответственного.");
       return;
     }
-    completeReception(selected.appeal.id, currentUser, {
+    const rec = await completeReception(selected.appeal.id, currentUser, {
       citizenStatement,
       leadershipExplanation,
       assignmentText,
@@ -91,6 +91,10 @@ export default function ReceptionPage() {
       responsibleName: resp.fullName,
       specialistsInvolved,
     });
+    if (rec && "ok" in rec && !rec.ok) {
+      setErr(rec.error);
+      return;
+    }
     setMsg("Приём зафиксирован. Поручение передано на контроль.");
     setSelectedId("");
     setCitizenStatement("");

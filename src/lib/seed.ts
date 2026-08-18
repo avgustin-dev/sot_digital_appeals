@@ -1,29 +1,17 @@
 import { LEADERSHIP_RECEPTION_SCHEDULE } from "./constants";
+import { catalog } from "./catalog";
 import type { AppealCard, Appointment, CalendarSettings, StaffUser } from "./types";
 
 export const DEFAULT_CALENDAR: CalendarSettings = {
-  // Вторник и четверг — типичный график приёма (настраивается)
   receptionWeekdays: [2, 4],
-  dayStartMinutes: 8 * 60, // 08:00
-  dayEndMinutes: 12 * 60, // 12:00
+  dayStartMinutes: 8 * 60,
+  dayEndMinutes: 12 * 60,
   slotDurationMinutes: 20,
   breakMinutes: 5,
   bookingHorizonDays: 45,
   closedDates: [],
   extraOpenDates: [],
-  rulesText: `Правила предварительной онлайн-записи на личный приём
-к руководству Верховного суда Кыргызской Республики
-
-1. Запись осуществляется через настоящую платформу.
-2. Обязательные сведения: ФИО, тема (предмет) обращения, контактный телефон.
-3. Продолжительность приёма — 20 минут. Между приёмами — перерыв 5 минут.
-4. Начало приёма — с 08:00 (08:00–08:20, 08:25–08:45, 08:50–09:10 и далее).
-5. Перенос или отмена записи — по коду записи и PIN-коду.
-6. На личном приёме не рассматриваются конкретные судебные дела, законность судебных актов и результаты рассмотрения дел.
-7. Предмет приёма: организация судопроизводства, деятельность суда, предложения по законодательству Кыргызской Республики.
-8. На приёме может быть подано письменное обращение.
-9. Подтверждение записи формируется автоматически.
-10. Неявка без отмены может повлечь ограничение последующей записи.`,
+  rulesText: catalog.calendarRules.rulesText,
 };
 
 const chairman = LEADERSHIP_RECEPTION_SCHEDULE[0];
@@ -92,7 +80,7 @@ function daysFromNow(n: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** Ближайшие вт/чт для демо-записей */
+/** Ближайшие вт/чт для исходных записей локального контура */
 function nextWeekday(targetDow: number, weeksAhead = 0): string {
   const d = new Date();
   d.setHours(12, 0, 0, 0);
@@ -276,7 +264,7 @@ export const SEED_APPEALS: AppealCard[] = [
     phone: "+996700111001",
     topic: "Доступность информации на сайте суда",
     category: "court_activity",
-    summary: "Повторное обращение того же гражданина (для демо мониторинга).",
+    summary: "Повторное обращение того же гражданина (для проверки мониторинга).",
     stage: "closed",
     previousAppealIds: [],
     previousNotes: "",

@@ -1,6 +1,8 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import type { AppealStage, AppointmentStatus } from "@/lib/types";
-import { STAGE_LABELS, STATUS_LABELS } from "@/lib/constants";
+import { useI18n } from "@/lib/i18n";
 
 const stageTone: Record<AppealStage, string> = {
   registered: "border-slate-300 bg-slate-50 text-slate-800",
@@ -24,17 +26,19 @@ const statusTone: Record<AppointmentStatus, string> = {
 };
 
 export function StageBadge({ stage }: { stage: AppealStage }) {
+  const { t } = useI18n();
   return (
     <span className={cn("badge border", stageTone[stage])}>
-      {STAGE_LABELS[stage]}
+      {t.stages[stage] || stage}
     </span>
   );
 }
 
 export function StatusBadge({ status }: { status: AppointmentStatus }) {
+  const { t } = useI18n();
   return (
     <span className={cn("badge border", statusTone[status])}>
-      {STATUS_LABELS[status]}
+      {t.statuses[status] || status}
     </span>
   );
 }

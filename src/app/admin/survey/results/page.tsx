@@ -6,12 +6,16 @@ import { useStore } from "@/lib/store";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { HBarChart } from "@/components/ui/SimpleCharts";
 import { Collapsible } from "@/components/ui/Collapsible";
+import { useI18n } from "@/lib/i18n";
 
 /**
  * Только статистика (без очистки / правок) — основное на opros.sot.kg.
  */
 export default function SurveyResultsPage() {
   const { ready, state } = useStore();
+  const { lang } = useI18n();
+  const isKy = lang === "ky";
+  const L = (ru: string, ky: string) => (isKy ? ky : ru);
 
   const questions = useMemo(
     () =>
@@ -66,51 +70,51 @@ export default function SurveyResultsPage() {
     });
   }, [questions, responses]);
 
-  if (!ready) return <PageLoader label="Загрузка…" />;
+  if (!ready) return <PageLoader label={L("Загрузка…", "Жүктөлүүдө…")} />;
 
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-slate-900 sm:text-2xl">
-            Результаты опросника — в разработке
+            {L("Результаты опросника — в разработке", "Сурамжылоо жыйынтыктары — иштелип жатат")}
           </h1>
           <p className="mt-1 max-w-xl text-sm text-slate-500">
-            Только статистика по заполненным анкетам.
+            {L("Только статистика по заполненным анкетам.", "Толтурулган анкеталар боюнча статистика гана.")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/survey" className="btn-outline !text-sm">
-            ← Вопросы
+            ← {L("Вопросы", "Суроолор")}
           </Link>
           <Link
             href="/survey"
             target="_blank"
             className="btn-outline !text-sm"
           >
-            Анкета (суды)
+            {L("Анкета (суды)", "Анкета (соттор)")}
           </Link>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs uppercase text-slate-500">Анкет</div>
+          <div className="text-xs uppercase text-slate-500">{L("Анкет", "Анкета")}</div>
           <div className="text-2xl font-bold text-slate-900">
             {responses.length}
           </div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs uppercase text-slate-500">Вопросов</div>
+          <div className="text-xs uppercase text-slate-500">{L("Вопросов", "Суроолор")}</div>
           <div className="text-2xl font-bold text-slate-900">
             {questions.length}
           </div>
         </div>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="text-xs uppercase text-slate-500">Последняя</div>
+          <div className="text-xs uppercase text-slate-500">{L("Последняя", "Акыркы")}</div>
           <div className="text-sm font-semibold text-slate-900">
             {responses[0]
-              ? new Date(responses[0].at).toLocaleString("ru-RU")
+              ? new Date(responses[0].at).toLocaleString(isKy ? "ky-KG" : "ru-RU")
               : "—"}
           </div>
         </div>
@@ -119,7 +123,7 @@ export default function SurveyResultsPage() {
       {byCourt.length > 0 && (
         <section className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <h2 className="mb-3 text-base font-semibold text-slate-900">
-            По судам
+            {L("По судам", "Соттор боюнча")}
           </h2>
           <HBarChart items={byCourt} />
         </section>
@@ -129,15 +133,15 @@ export default function SurveyResultsPage() {
         {stats.map((s) => (
           <Collapsible
             key={s.question.id}
-            title={`Вопрос ${s.question.order}`}
-            subtitle={s.question.textRu}
+            title={`${L("Вопрос", "Суроо")} ${s.question.order}`}
+            subtitle={isKy ? s.question.textKy || s.question.textRu : s.question.textRu}
             defaultOpen={s.question.order <= 3}
           >
             {s.kind === "single" && (
               <HBarChart
                 items={s.question.options.map((o) => ({
                   key: o.id,
-                  label: o.textRu,
+                  label: isKy ? o.textKy || o.textRu : o.textRu,
                   value: s.counts[o.id] || 0,
                 }))}
               />
@@ -145,11 +149,11 @@ export default function SurveyResultsPage() {
             {s.kind === "text" && (
               <div>
                 <p className="mb-2 text-xs text-slate-500">
-                  Текстовых ответов: {s.total}
-                  {s.total > 12 ? " (показаны первые 12)" : ""}
+                  {L("Текстовых ответов", "Текст жооптору")}: {s.total}
+                  {s.total > 12 ? L(" (показаны первые 12)", " (биринчи 12)") : ""}
                 </p>
                 {s.texts.length === 0 ? (
-                  <p className="text-sm text-slate-400">Нет ответов.</p>
+                  <p className="text-sm text-slate-400">{L("Нет ответов.", "Жооп жок.")}</p>
                 ) : (
                   <ul className="space-y-2">
                     {s.texts.map((t, i) => (

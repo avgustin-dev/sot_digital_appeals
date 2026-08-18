@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   addMonths,
@@ -27,10 +27,14 @@ import {
 } from "@/lib/slots";
 import { cn } from "@/lib/utils";
 import { resolveTargetWindow, targetShort } from "@/lib/targets";
+import { useRemoteApi } from "@/config/env";
+import { backend } from "@/api/client";
+import type { TimeSlot } from "@/lib/types";
 
 /**
  * Строгий календарь записи (гос.стиль, удобный):
  * слева — месяц, справа — слоты; без «стартап»-декора.
+ * При NEXT_PUBLIC_API_URL дни и слоты приходят с бэкенда.
  */
 export function SlotPicker({
   date,
@@ -51,9 +55,58 @@ export function SlotPicker({
   const { t, lang } = useI18n();
   const c = t.calendar;
   const isKy = lang === "ky";
+  const target = targetId || "reception";
+
+  const [remoteDates, setRemoteDates] = useState<string[] | null>(null);
+  const [remoteSlots, setRemoteSlots] = useState<TimeSlot[] | null>(null);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!useRemoteApi || !ready) {
+      setRemoteDates(null);
+      return;
+    }
+    let cancelled = false;
+    backend.public
+      .dates(target)
+      .then((r) => {
+        if (!cancelled) setRemoteDates(r.dates);
+      })
+      .catch(() => {
+        if (!cancelled) setRemoteDates([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, target]);
+
+  useEffect(() => {
+    if (!useRemoteApi || !ready || !date) {
+      setRemoteSlots(null);
+      setSlotsLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setSlotsLoading(true);
+    backend.public
+      .slots(date, target, excludeAppointmentId)
+      .then((r) => {
+        if (!cancelled) setRemoteSlots(r.slots);
+      })
+      .catch(() => {
+        if (!cancelled) setRemoteSlots([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSlotsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [ready, date, target, excludeAppointmentId]);
 
   const availableSet = useMemo(() => {
     if (!ready) return new Set<string>();
+    if (useRemoteApi) return new Set(remoteDates ?? []);
     return new Set(
       listAvailableDates(
         state.calendar,
@@ -62,27 +115,34 @@ export function SlotPicker({
         state.serviceContent
       )
     );
-  }, [ready, state.calendar, state.serviceContent, targetId]);
+  }, [ready, state.calendar, state.serviceContent, targetId, remoteDates]);
 
   const initialMonth = date
     ? startOfMonth(parseISO(date))
     : startOfMonth(new Date());
   const [month, setMonth] = useState(initialMonth);
 
-  const slots = useMemo(
-    () =>
-      ready && date
-        ? getAvailableSlotsForDate(
-            date,
-            state.calendar,
-            state.appointments,
-            excludeAppointmentId,
-            targetId,
-            state.serviceContent
-          )
-        : [],
-    [date, state.calendar, state.appointments, state.serviceContent, excludeAppointmentId, ready, targetId]
-  );
+  const slots = useMemo(() => {
+    if (!ready || !date) return [];
+    if (useRemoteApi) return remoteSlots ?? [];
+    return getAvailableSlotsForDate(
+      date,
+      state.calendar,
+      state.appointments,
+      excludeAppointmentId,
+      targetId,
+      state.serviceContent
+    );
+  }, [
+    date,
+    state.calendar,
+    state.appointments,
+    state.serviceContent,
+    excludeAppointmentId,
+    ready,
+    targetId,
+    remoteSlots,
+  ]);
 
   const gridDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(month), { weekStartsOn: 1 });
@@ -98,12 +158,19 @@ export function SlotPicker({
   const today = startOfDay(new Date());
   const monthLabel = `${c.months[month.getMonth()]} ${month.getFullYear()}`;
   const selectedSlot = slots.find((s) => s.start === slotStart);
+  const datesReady = !useRemoteApi || remoteDates !== null;
 
   function dayStatus(d: Date): "open" | "closed" | "past" | "selected" {
     const key = format(d, "yyyy-MM-dd");
     if (date === key) return "selected";
     if (isBefore(d, today)) return "past";
-    if (availableSet.has(key) && isReceptionDate(key, state.calendar, targetId, state.serviceContent))
+    if (useRemoteApi) {
+      return availableSet.has(key) ? "open" : "closed";
+    }
+    if (
+      availableSet.has(key) &&
+      isReceptionDate(key, state.calendar, targetId, state.serviceContent)
+    )
       return "open";
     return "closed";
   }
@@ -220,6 +287,10 @@ export function SlotPicker({
               <p className="border border-dashed border-court-line bg-court-mist px-4 py-8 text-center text-sm text-court-muted">
                 {c.pickDateFirst}
               </p>
+            ) : slotsLoading ? (
+              <p className="border border-dashed border-court-line bg-court-mist px-4 py-8 text-center text-sm text-court-muted">
+                {isKy ? "Убакыт жүктөлүүдө…" : "Загрузка времени…"}
+              </p>
             ) : slots.length === 0 ? (
               <p className="border border-court-line bg-court-mist px-4 py-6 text-sm text-court-ink">
                 {c.noSlots}
@@ -285,7 +356,7 @@ export function SlotPicker({
         </div>
       )}
 
-      {!availableSet.size && ready && (
+      {!availableSet.size && ready && datesReady && (
         <p className="border border-court-line bg-court-mist px-3 py-2 text-sm text-court-ink">
           {c.noDates}
         </p>

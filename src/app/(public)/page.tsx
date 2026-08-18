@@ -1,15 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  STAGE_LABELS,
-  STATUS_LABELS,
-} from "@/lib/constants";
 import { useI18n } from "@/lib/i18n";
-import { env } from "@/config/env";
 import { EmblemKR } from "@/components/brand/Emblem";
+import { appointmentStatusHref, evaluationHref } from "@/lib/ticketUrl";
+import { routes } from "@/lib/routes";
 import { useStore } from "@/lib/store";
 import { formatDateRu } from "@/lib/slots";
 import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
@@ -24,7 +21,7 @@ export default function HomePage() {
   const { t, lang } = useI18n();
   const isKy = lang === "ky";
   const router = useRouter();
-  const { ready, state, lookupByCode, recoverCodesByPhone } = useStore();
+  const { state, lookupByCode, recoverCodesByPhone } = useStore();
 
   const sc = mergeServiceContent(state.serviceContent);
   const hubTitle = pickLocale(isKy, sc.hubTitleRu, sc.hubTitleKy);
@@ -60,39 +57,15 @@ export default function HomePage() {
 
   const [recoverPhone, setRecoverPhone] = useState("");
   const [recoverMsg, setRecoverMsg] = useState("");
+  const [recoverCodes, setRecoverCodes] = useState<string[]>([]);
   const [rateCode, setRateCode] = useState("");
 
-  const stats = useMemo(() => {
-    if (!ready) {
-      return {
-        registered: 0,
-        upcoming: 0,
-        inProcess: 0,
-        completed: 0,
-        cancelled: 0,
-      };
-    }
-    const apts = state.appointments;
-    const appeals = state.appeals;
-    return {
-      registered: apts.length,
-      upcoming: apts.filter(
-        (a) => a.status === "confirmed" || a.status === "rescheduled"
-      ).length,
-      inProcess: appeals.filter((a) =>
-        ["under_review", "ready_for_reception", "in_control"].includes(a.stage)
-      ).length,
-      completed: apts.filter((a) => a.status === "completed").length,
-      cancelled: apts.filter((a) => a.status === "cancelled").length,
-    };
-  }, [ready, state.appointments, state.appeals]);
-
-  function onCheckStatus(e: React.FormEvent) {
+  async function onCheckStatus(e: React.FormEvent) {
     e.preventDefault();
     setStatusOk(false);
     setStatusMsg("");
     setStatusNotice(null);
-    const found = lookupByCode(statusCode);
+    const found = await lookupByCode(statusCode);
     if (!found) {
       setStatusMsg(
         isKy
@@ -103,8 +76,8 @@ export default function HomePage() {
     }
     const { appointment, appeal } = found;
     const stage = appeal
-      ? STAGE_LABELS[appeal.stage]
-      : STATUS_LABELS[appointment.status];
+      ? t.stages[appeal.stage] || appeal.stage
+      : t.statuses[appointment.status] || appointment.status;
     setStatusOk(true);
     setStatusMsg(
       isKy
@@ -121,10 +94,11 @@ export default function HomePage() {
     }
   }
 
-  function onRecover(e: React.FormEvent) {
+  async function onRecover(e: React.FormEvent) {
     e.preventDefault();
     setRecoverMsg("");
-    const codes = recoverCodesByPhone(recoverPhone);
+    setRecoverCodes([]);
+    const codes = await recoverCodesByPhone(recoverPhone);
     if (!codes.length) {
       setRecoverMsg(
         isKy
@@ -133,10 +107,11 @@ export default function HomePage() {
       );
       return;
     }
+    setRecoverCodes(codes);
     setRecoverMsg(
       isKy
-        ? `Табылган коддор: ${codes.join(", ")}. PIN — жазылуу ырастоосунда.`
-        : `Найдены коды: ${codes.join(", ")}. PIN указан в подтверждении записи.`
+        ? "PIN — жазылуу ырастоосунда (талон / кат)."
+        : "PIN указан в подтверждении записи (талон или письмо)."
     );
   }
 
@@ -167,7 +142,7 @@ export default function HomePage() {
             </div>
 
             <Link
-              href="/book"
+              href={routes.appointment}
               className="btn-primary mt-4 w-full !py-2.5"
             >
               {hubCta}
@@ -190,63 +165,7 @@ export default function HomePage() {
         <CourtContactsBlock isKy={isKy} showSchedule />
         <CitizenHubNav />
 
-        {/* Статистика + статус / код / оценка */}
-        <div className={`grid gap-4 ${env.demo ? "lg:grid-cols-2" : ""}`}>
-          {env.demo && (
-          <div className="rounded-lg border border-court-line bg-white p-5 shadow-sm">
-            <h2 className="text-base font-semibold text-court-navy">
-              {isKy
-                ? "Электрондук кабыл алуу статистикасы"
-                : "Статистика электронного приёма"}
-            </h2>
-            <ul className="mt-4 space-y-3 text-sm">
-              <StatRow
-                label={
-                  isKy
-                    ? "Жазылган жарандар"
-                    : "Зарегистрированы на приём"
-                }
-                value={stats.registered}
-                color="bg-court-blue"
-                max={Math.max(stats.registered, 1)}
-              />
-              <StatRow
-                label={
-                  isKy ? "Күтүлүп жаткан кабыл алуу" : "Ожидают приёма"
-                }
-                value={stats.upcoming}
-                color="bg-sky-500"
-                max={Math.max(stats.registered, 1)}
-              />
-              <StatRow
-                label={
-                  isKy ? "Кароо процессинде" : "В процессе рассмотрения"
-                }
-                value={stats.inProcess}
-                color="bg-amber-500"
-                max={Math.max(stats.registered, 1)}
-              />
-              <StatRow
-                label={isKy ? "Өткөрүлгөн" : "Проведённые приёмы"}
-                value={stats.completed}
-                color="bg-emerald-600"
-                max={Math.max(stats.registered, 1)}
-              />
-              <StatRow
-                label={isKy ? "Жокко чыгарылган" : "Отменённые записи"}
-                value={stats.cancelled}
-                color="bg-rose-500"
-                max={Math.max(stats.registered, 1)}
-              />
-            </ul>
-            <p className="mt-3 text-xs text-court-muted">
-              {isKy
-                ? "Көрсөткүчтөр учурдагы каттоолор боюнча."
-                : "Показатели по зарегистрированным обращениям."}
-            </p>
-          </div>
-          )}
-
+        <div className="grid gap-4 lg:grid-cols-1">
           <div className="space-y-4">
             <div className="rounded-lg border border-court-line bg-white p-5 shadow-sm">
               <h2 className="text-base font-semibold text-court-navy">
@@ -280,7 +199,7 @@ export default function HomePage() {
                   {statusOk && statusNotice && (
                     <div className="rounded-md border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-950">
                       <div className="text-[10px] font-semibold uppercase tracking-wide text-sky-700">
-                        {isKy ? "Уведомление" : "Уведомление"}
+                        {isKy ? "Билдирме" : "Уведомление"}
                       </div>
                       <div className="mt-0.5 font-semibold">
                         {statusNotice.title}
@@ -297,15 +216,25 @@ export default function HomePage() {
                       ) : null}
                     </div>
                   )}
+                  {statusOk && (
+                    <Link
+                      href={appointmentStatusHref(statusCode)}
+                      className="inline-block text-sm font-medium text-court-blue hover:underline"
+                    >
+                      {isKy
+                        ? "Толук башкаруу (PIN менен) →"
+                        : "Управление записью (нужен PIN) →"}
+                    </Link>
+                  )}
                 </div>
               )}
               <Link
-                href="/my-appointment"
+                href={routes.appointmentStatus}
                 className="mt-2 inline-block text-xs font-medium text-court-blue hover:underline"
               >
                 {isKy
-                  ? "Толук башкаруу (код + PIN) →"
-                  : "Полное управление (код + PIN) →"}
+                  ? "Код жана PIN менен кирүү →"
+                  : "Вход по коду и PIN →"}
               </Link>
             </div>
 
@@ -327,6 +256,20 @@ export default function HomePage() {
               {recoverMsg && (
                 <p className="mt-2 text-sm text-court-ink">{recoverMsg}</p>
               )}
+              {recoverCodes.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {recoverCodes.map((c) => (
+                    <li key={c}>
+                      <Link
+                        href={appointmentStatusHref(c)}
+                        className="font-mono text-sm font-semibold text-court-blue hover:underline"
+                      >
+                        {c}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
 
             <div className="rounded-lg border border-court-line bg-white p-5 shadow-sm">
@@ -344,9 +287,7 @@ export default function HomePage() {
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (rateCode.trim()) {
-                    router.push(
-                      `/feedback/${rateCode.trim().toUpperCase()}`
-                    );
+                    router.push(evaluationHref(rateCode));
                   }
                 }}
                 className="mt-3 space-y-2"
@@ -362,7 +303,7 @@ export default function HomePage() {
                 </button>
               </form>
               <Link
-                href="/feedback"
+                href={routes.evaluation}
                 className="mt-2 inline-block text-xs font-medium text-court-blue hover:underline"
               >
                 {isKy ? "Бөлүм жөнүндө →" : "Подробнее об оценке →"}
@@ -398,33 +339,5 @@ export default function HomePage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function StatRow({
-  label,
-  value,
-  color,
-  max,
-}: {
-  label: string;
-  value: number;
-  color: string;
-  max: number;
-}) {
-  const pct = Math.min(100, Math.round((value / max) * 100));
-  return (
-    <li>
-      <div className="mb-1 flex justify-between gap-2">
-        <span className="text-court-ink">{label}</span>
-        <span className="font-mono font-semibold text-court-navy">{value}</span>
-      </div>
-      <div className="h-2 overflow-hidden rounded-full bg-court-mist">
-        <div
-          className={`h-full rounded-full ${color} transition-all`}
-          style={{ width: `${Math.max(pct, value > 0 ? 8 : 0)}%` }}
-        />
-      </div>
-    </li>
   );
 }

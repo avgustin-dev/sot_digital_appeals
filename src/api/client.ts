@@ -55,8 +55,14 @@ export const backend = {
     bootstrap: () => api<PublicBootstrap>(paths.public.bootstrap),
     dates: (targetId: string) =>
       api<AvailableDatesResponse>(paths.public.dates(targetId)),
-    slots: (date: string, targetId: string) =>
-      api<SlotDayResponse>(paths.public.slots(date, targetId)),
+    slots: (
+      date: string,
+      targetId: string,
+      excludeAppointmentId?: string
+    ) =>
+      api<SlotDayResponse>(
+        paths.public.slots(date, targetId, excludeAppointmentId)
+      ),
     book: (body: BookAppointmentRequest) =>
       api<BookAppointmentResponse>(paths.public.book, {
         method: "POST",

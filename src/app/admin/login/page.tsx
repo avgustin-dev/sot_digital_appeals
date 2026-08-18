@@ -4,9 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { ORG_NAME } from "@/lib/constants";
-import { EmblemKR } from "@/components/brand/Emblem";
 import { useI18n } from "@/lib/i18n";
+import { EmblemKR } from "@/components/brand/Emblem";
 import { LangSwitch } from "@/components/ui/LangSwitch";
 import { env, useRemoteApi } from "@/config/env";
 import { backend } from "@/api/client";
@@ -17,7 +16,7 @@ import { staffHomePath } from "@/lib/staff";
 export default function AdminLoginPage() {
   const { login, hydrateStaffSession, currentUser, ready, state } = useStore();
   const router = useRouter();
-  const { lang } = useI18n();
+  const { t, lang } = useI18n();
   const isKy = lang === "ky";
   const [loginName, setLoginName] = useState("");
   const [password, setPassword] = useState("");
@@ -76,7 +75,7 @@ export default function AdminLoginPage() {
           <EmblemKR size={40} />
           <div className="min-w-0 flex-1">
             <div className="line-clamp-2 text-xs font-semibold leading-snug text-slate-900 sm:text-sm">
-              {ORG_NAME}
+              {t.orgName}
             </div>
             <div className="text-[11px] text-slate-500">
               {isKy ? "Кызматтык кабинет" : "Служебный кабинет"}

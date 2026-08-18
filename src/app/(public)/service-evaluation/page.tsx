@@ -6,6 +6,7 @@ import Link from "next/link";
 import { FEEDBACK_QUESTIONS } from "@/lib/constants";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useI18n } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
 
 /**
  * Оценка сервиса: электронная запись + общественная приёмная.
@@ -44,7 +45,7 @@ export default function FeedbackIndexPage() {
           </div>
           <ul className="mt-2 list-disc space-y-1 pl-4">
             {FEEDBACK_QUESTIONS.map((q) => (
-              <li key={q.key}>{q.label}</li>
+              <li key={q.key}>{isKy ? q.labelKy || q.label : q.label}</li>
             ))}
           </ul>
         </div>
@@ -54,7 +55,7 @@ export default function FeedbackIndexPage() {
           onSubmit={(e) => {
             e.preventDefault();
             if (code.trim())
-              router.push(`/feedback/${code.trim().toUpperCase()}`);
+              router.push(routes.evaluationByCode(code.trim().toUpperCase()));
           }}
         >
           <div>
@@ -82,12 +83,12 @@ export default function FeedbackIndexPage() {
         </p>
         <div className="mt-3 flex flex-wrap gap-3 text-sm">
           <Link
-            href="/my-appointment"
+            href={routes.appointmentStatus}
             className="font-semibold text-court-blue hover:underline"
           >
             {t.nav.myAppointment} →
           </Link>
-          <Link href="/book" className="font-semibold text-court-blue hover:underline">
+          <Link href={routes.appointment} className="font-semibold text-court-blue hover:underline">
             {t.nav.book} →
           </Link>
         </div>

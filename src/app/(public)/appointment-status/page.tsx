@@ -7,7 +7,7 @@ import { VisitTicket } from "@/components/booking/VisitTicket";
 import { StatusBadge } from "@/components/ui/Badge";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
-import { env } from "@/config/env";
+import { routes } from "@/lib/routes";
 import { formatDateRu, weekdayRu } from "@/lib/slots";
 import type { Appointment, AppealCard } from "@/lib/types";
 import {
@@ -22,7 +22,6 @@ import {
 import { cn } from "@/lib/utils";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
-import { STAGE_LABELS } from "@/lib/constants";
 
 type Panel = "find" | "details" | "reschedule" | "history" | "appeal";
 
@@ -51,11 +50,18 @@ export default function MyAppointmentPage() {
   const [remember, setRemember] = useState(true);
 
   useEffect(() => {
+    const fromUrl =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("code")
+        : null;
+    if (fromUrl) {
+      setCode(fromUrl.trim().toUpperCase());
+    }
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
       const data = JSON.parse(raw) as { code?: string; pin?: string };
-      if (data.code) setCode(data.code);
+      if (!fromUrl && data.code) setCode(data.code);
       if (data.pin) setPin(data.pin);
     } catch {
       /* ignore */
@@ -70,8 +76,8 @@ export default function MyAppointmentPage() {
     ? state.appeals.find((a) => a.appointmentId === apt.id)
     : undefined;
 
-  function refresh() {
-    const found = findAppointment(code, pin);
+  async function refresh() {
+    const found = await findAppointment(code, pin);
     setApt(found);
     return found;
   }
@@ -84,11 +90,11 @@ export default function MyAppointmentPage() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ code: c, pin: p }));
   }
 
-  function onFind(e: React.FormEvent) {
+  async function onFind(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setMessage("");
-    const found = findAppointment(code, pin);
+    const found = await findAppointment(code, pin);
     if (!found) {
       setApt(null);
       setError(
@@ -104,7 +110,7 @@ export default function MyAppointmentPage() {
     setPanel("details");
   }
 
-  function onCancel() {
+  async function onCancel() {
     if (!apt) return;
     if (
       !confirm(
@@ -114,7 +120,7 @@ export default function MyAppointmentPage() {
       )
     )
       return;
-    const res = cancelAppointment(code, pin);
+    const res = await cancelAppointment(code, pin);
     if (!res.ok) {
       setError(res.error || "Ошибка");
       return;
@@ -122,14 +128,14 @@ export default function MyAppointmentPage() {
     setMessage(
       isKy ? "Жазылуу жокко чыгарылды." : "Запись отменена."
     );
-    setApt(refresh());
+    setApt(await refresh());
     setPanel("details");
   }
 
-  function onReschedule(e: React.FormEvent) {
+  async function onReschedule(e: React.FormEvent) {
     e.preventDefault();
     if (!apt) return;
-    const res = rescheduleAppointment(code, pin, date, slotStart, slotEnd);
+    const res = await rescheduleAppointment(code, pin, date, slotStart, slotEnd);
     if (!res.ok) {
       setError(res.error || (isKy ? "Которулган жок" : "Не удалось перенести"));
       return;
@@ -139,7 +145,7 @@ export default function MyAppointmentPage() {
         ? `Жазылуу которулду: ${formatDateRu(date)}, ${slotStart}–${slotEnd}.`
         : `Запись перенесена на ${formatDateRu(date)}, ${slotStart}–${slotEnd}.`
     );
-    setApt(refresh());
+    setApt(await refresh());
     setPanel("details");
     setDate("");
     setSlotStart("");
@@ -182,7 +188,7 @@ export default function MyAppointmentPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10">
+    <div className="print-ticket-root mx-auto max-w-6xl px-4 py-8 md:px-6 md:py-10">
       <Breadcrumbs
         items={[
           { label: t.crumbs.home, href: "/" },
@@ -240,7 +246,7 @@ export default function MyAppointmentPage() {
           </div>
 
           <Link
-            href="/book"
+            href={routes.appointment}
             className="card flex items-center gap-3 p-4 transition hover:border-court-blue"
           >
             <div className="flex h-10 w-10 items-center justify-center bg-court-light text-court-blue">
@@ -258,7 +264,7 @@ export default function MyAppointmentPage() {
 
           {apt && (
             <Link
-              href={`/feedback/${apt.code}`}
+              href={routes.evaluationByCode(apt.code)}
               className="card flex items-center gap-3 border-court-gold/40 p-4 transition hover:border-court-gold"
             >
               <div className="flex h-10 w-10 items-center justify-center bg-court-goldPale text-court-ink">
@@ -280,37 +286,6 @@ export default function MyAppointmentPage() {
                 </div>
               </div>
             </Link>
-          )}
-
-          {env.demo && (
-          <div className="border border-dashed border-court-line bg-white p-4 text-xs text-court-muted">
-            {t.my.demo}:{" "}
-            <button
-              type="button"
-              className="font-mono font-semibold text-court-blue"
-              onClick={() => {
-                setCode("VS-2026-1001");
-                setPin("4821");
-              }}
-            >
-              VS-2026-1001
-            </button>
-            {" / "}
-            <span className="font-mono font-semibold">4821</span>
-            {" · "}
-            <button
-              type="button"
-              className="font-mono font-semibold text-court-blue"
-              onClick={() => {
-                setCode("VS-2026-1003");
-                setPin("5502");
-              }}
-            >
-              VS-2026-1003
-            </button>
-            {" / "}
-            <span className="font-mono font-semibold">5502</span>
-          </div>
           )}
         </aside>
 
@@ -355,7 +330,7 @@ export default function MyAppointmentPage() {
                     className="input !min-h-11 font-mono"
                     value={pin}
                     onChange={(e) => setPin(e.target.value)}
-                    placeholder="4 цифры"
+                    placeholder={isKy ? "4 сан" : "4 цифры"}
                     required
                   />
                 </div>
@@ -464,7 +439,7 @@ export default function MyAppointmentPage() {
                       {isKy ? "Этап" : "Этап обращения"}
                     </div>
                     <div className="font-semibold text-court-ink">
-                      {STAGE_LABELS[appeal.stage] || appeal.stage}
+                      {t.stages[appeal.stage] || appeal.stage}
                     </div>
                   </div>
                 )}
@@ -526,7 +501,7 @@ export default function MyAppointmentPage() {
                     {isKy ? "Этап" : "Этап"}
                   </dt>
                   <dd className="font-semibold text-court-ink">
-                    {STAGE_LABELS[appeal.stage]}
+                    {t.stages[appeal.stage]}
                   </dd>
                 </div>
                 <div>

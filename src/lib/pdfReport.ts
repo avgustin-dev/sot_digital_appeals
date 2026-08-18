@@ -1,6 +1,7 @@
 import type { AppealCard, Appointment } from "./types";
-import { STAGE_LABELS, CATEGORY_LABELS, ORG_NAME } from "./constants";
+import { catalog } from "./catalog";
 import { average, normalizePhone } from "./utils";
+import { pickShell, type UiLang } from "./langCookie";
 
 type ReportInput = {
   appeals: AppealCard[];
@@ -8,6 +9,7 @@ type ReportInput = {
   title?: string;
   subtitle?: string;
   orgName?: string;
+  lang?: UiLang;
 };
 
 /**
@@ -15,13 +17,17 @@ type ReportInput = {
  * В диалоге печати: «Сохранить как PDF» (работает с кириллицей).
  */
 export function downloadAppealsReport(input: ReportInput) {
+  const lang: UiLang = input.lang === "ru" ? "ru" : "ky";
+  const ui = lang === "ky" ? catalog.uiKy : catalog.uiRu;
+  const pdf = catalog.shell.pdf;
+  const L = (ru: string, ky: string) => pickShell(lang, ru, ky);
+
   const appeals = input.appeals.filter((a) => a.stage !== "cancelled");
   const appointments = input.appointments;
-  const orgName = input.orgName || ORG_NAME;
-  const title = input.title || "Отчёт по приёму граждан";
-  const subtitle =
-    input.subtitle || "Сводка для руководства Верховного суда КР";
-  const now = new Date().toLocaleString("ru-RU");
+  const orgName = input.orgName || ui.orgName;
+  const title = input.title || L(pdf.titleRu, pdf.titleKy);
+  const subtitle = input.subtitle || L(pdf.subtitleRu, pdf.subtitleKy);
+  const now = new Date().toLocaleString(lang === "ky" ? "ky-KG" : "ru-RU");
 
   const groups = new Map<string, AppealCard[]>();
   for (const a of appeals) {
@@ -59,14 +65,14 @@ export function downloadAppealsReport(input: ReportInput) {
       <td>${esc(a.code)}</td>
       <td>${esc(a.fullName)}</td>
       <td>${esc(a.topic)}</td>
-      <td>${esc(CATEGORY_LABELS[a.category] || a.category)}</td>
-      <td>${esc(STAGE_LABELS[a.stage] || a.stage)}</td>
+      <td>${esc(ui.categories[a.category] || a.category)}</td>
+      <td>${esc(ui.stages[a.stage] || a.stage)}</td>
     </tr>`
     )
     .join("");
 
   const html = `<!DOCTYPE html>
-<html lang="ru">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8"/>
 <title>${esc(title)}</title>
@@ -88,33 +94,33 @@ export function downloadAppealsReport(input: ReportInput) {
 </head>
 <body>
   <p class="noprint" style="background:#E8F0F8;padding:10px;border-radius:8px;margin-bottom:16px;">
-    <strong>Как сохранить PDF:</strong> в окне печати выберите «Сохранить как PDF» / «Microsoft Print to PDF».
+    <strong>${esc(L(pdf.popupHintRu, pdf.popupHintKy))}</strong>
   </p>
   <h1>${esc(title)}</h1>
-  <div class="meta">${esc(orgName)}<br/>${esc(subtitle)}<br/>Сформировано: ${esc(now)}</div>
+  <div class="meta">${esc(orgName)}<br/>${esc(subtitle)}<br/>${esc(L(pdf.generatedRu, pdf.generatedKy))}: ${esc(now)}</div>
   <div class="kpis">
-    <div class="kpi"><span>Обращений</span><b>${appeals.length}</b></div>
-    <div class="kpi"><span>Записей</span><b>${appointments.length}</b></div>
-    <div class="kpi"><span>Повторные граждане</span><b>${repeated.length}</b></div>
-    <div class="kpi"><span>Средняя оценка</span><b>${overall ? overall.toFixed(1) : "—"} / 5</b></div>
-    <div class="kpi"><span>Оценок</span><b>${feedbacks.length}</b></div>
+    <div class="kpi"><span>${esc(L("Обращений", "Кайрылуулар"))}</span><b>${appeals.length}</b></div>
+    <div class="kpi"><span>${esc(L("Записей", "Жазылуулар"))}</span><b>${appointments.length}</b></div>
+    <div class="kpi"><span>${esc(L("Повторные граждане", "Кайталанма жарандар"))}</span><b>${repeated.length}</b></div>
+    <div class="kpi"><span>${esc(L("Средняя оценка", "Орточо баа"))}</span><b>${overall ? overall.toFixed(1) : "—"} / 5</b></div>
+    <div class="kpi"><span>${esc(L("Оценок", "Баалар"))}</span><b>${feedbacks.length}</b></div>
   </div>
-  <h2>По этапам</h2>
+  <h2>${esc(L(pdf.stagesRu, pdf.stagesKy))}</h2>
   <table>
-    <thead><tr><th>Этап</th><th>Кол-во</th></tr></thead>
+    <thead><tr><th>${esc(L(pdf.colStageRu, pdf.colStageKy))}</th><th>${esc(L("Кол-во", "Саны"))}</th></tr></thead>
     <tbody>
       ${byStage
         .map(
           ([k, n]) =>
-            `<tr><td>${esc(STAGE_LABELS[k as keyof typeof STAGE_LABELS] || k)}</td><td>${n}</td></tr>`
+            `<tr><td>${esc(ui.stages[k] || k)}</td><td>${n}</td></tr>`
         )
         .join("")}
     </tbody>
   </table>
-  <h2>Повторные обращения</h2>
+  <h2>${esc(L(pdf.repeatedRu, pdf.repeatedKy))}</h2>
   ${
     repeated.length === 0
-      ? "<p>Нет повторных обращений.</p>"
+      ? `<p>${esc(L("Нет повторных обращений.", "Кайталанма кайрылуу жок."))}</p>`
       : `<ul>${repeated
           .map(
             (g) =>
@@ -124,21 +130,25 @@ export function downloadAppealsReport(input: ReportInput) {
           )
           .join("")}</ul>`
   }
-  <h2>Реестр обращений</h2>
+  <h2>${esc(L(pdf.registryRu, pdf.registryKy))}</h2>
   <table>
-    <thead><tr><th>Код</th><th>ФИО</th><th>Тема</th><th>Категория</th><th>Этап</th></tr></thead>
-    <tbody>${rows || "<tr><td colspan='5'>Нет данных</td></tr>"}</tbody>
+    <thead><tr>
+      <th>${esc(L(pdf.colCodeRu, pdf.colCodeKy))}</th>
+      <th>${esc(L(pdf.colNameRu, pdf.colNameKy))}</th>
+      <th>${esc(L(pdf.colTopicRu, pdf.colTopicKy))}</th>
+      <th>${esc(L(pdf.colCategoryRu, pdf.colCategoryKy))}</th>
+      <th>${esc(L(pdf.colStageRu, pdf.colStageKy))}</th>
+    </tr></thead>
+    <tbody>${rows || `<tr><td colspan='5'>${esc(L(pdf.noDataRu, pdf.noDataKy))}</td></tr>`}</tbody>
   </table>
-  <p class="foot">Цифровая платформа приёма граждан руководством Верховного суда Кыргызской Республики</p>
+  <p class="foot">${esc(L(pdf.footRu, pdf.footKy))}</p>
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
 </body>
 </html>`;
 
   const w = window.open("", "_blank", "noopener,noreferrer,width=920,height=720");
   if (!w) {
-    alert(
-      "Разрешите всплывающие окна. Затем: Печать → «Сохранить как PDF»."
-    );
+    alert(L(pdf.popupHintRu, pdf.popupHintKy));
     return;
   }
   w.document.open();

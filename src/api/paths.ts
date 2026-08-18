@@ -18,8 +18,12 @@ export const paths = {
     bootstrap: "/public/bootstrap",
     dates: (targetId: string) =>
       `/public/dates${q({ targetId })}`,
-    slots: (date: string, targetId: string) =>
-      `/public/slots${q({ date, targetId })}`,
+    slots: (
+      date: string,
+      targetId: string,
+      excludeAppointmentId?: string
+    ) =>
+      `/public/slots${q({ date, targetId, excludeAppointmentId })}`,
     book: "/public/appointments",
     lookup: (code: string) =>
       `/public/appointments/${encodeURIComponent(code)}`,

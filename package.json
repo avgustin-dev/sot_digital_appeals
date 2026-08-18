@@ -8,14 +8,14 @@
     "dev:alt": "next dev --port 3005",
     "build": "next build",
     "start": "next start --port 3000",
-    "lint": "eslint src --ext .ts,.tsx",
-    "export:content": "npx --yes tsx scripts/export-static-content.ts"
+    "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.525.0",
     "next": "16.3.0",
+    "qrcode.react": "^4.2.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zustand": "^5.0.14"

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Collapsible } from "@/components/ui/Collapsible";
 
@@ -70,8 +71,8 @@ export default function AdminHelpPage() {
             {isKy ? (
               <>
                 Жазылуу:{" "}
-                <Link href="/book" className="font-medium text-court-blue">
-                  /book
+                <Link href={routes.appointment} className="font-medium text-court-blue">
+                  {routes.appointment}
                 </Link>
                 {" "}
                 (эрежелер → допуск → маалымат → күн жана убакыт).
@@ -79,8 +80,8 @@ export default function AdminHelpPage() {
             ) : (
               <>
                 Запись на приём:{" "}
-                <Link href="/book" className="font-medium text-court-blue">
-                  /book
+                <Link href={routes.appointment} className="font-medium text-court-blue">
+                  {routes.appointment}
                 </Link>
                 {" "}
                 (правила → проверка допуска → сведения → дата и время).
@@ -94,8 +95,8 @@ export default function AdminHelpPage() {
           </li>
           <li>
             {isKy
-              ? "Берилет: каттоо коду (мисалы, VS-2026-1001) жана PIN-код (төрт сан)."
-              : "Выдаются: регистрационный код (например, VS-2026-1001) и PIN-код (четыре цифры)."}
+              ? "Берилет: каттоо коду (формат VS-ГГГГ-XXXX) жана PIN-код (төрт сан)."
+              : "Выдаются: регистрационный код (формат VS-ГГГГ-XXXX) и PIN-код (четыре цифры)."}
           </li>
           <li>
             {isKy
@@ -109,8 +110,8 @@ export default function AdminHelpPage() {
           </li>
           <li>
             {isKy
-              ? "Сервисти баалоо: /feedback, каттоо коду боюнча."
-              : "Оценка сервиса: /feedback, по регистрационному коду."}
+              ? `Сервисти баалоо: ${routes.evaluation}, каттоо коду боюнча.`
+              : `Оценка сервиса: ${routes.evaluation}, по регистрационному коду.`}
           </li>
         </ol>
       </Collapsible>
@@ -382,8 +383,8 @@ export default function AdminHelpPage() {
           </li>
           <li>
             {isKy
-              ? "Жаран: /my-appointment — каттоо коду жана PIN-код."
-              : "Гражданин: /my-appointment — регистрационный код и PIN-код."}
+              ? `Жаран: ${routes.appointmentStatus} — каттоо коду жана PIN-код.`
+              : `Гражданин: ${routes.appointmentStatus} — регистрационный код и PIN-код.`}
           </li>
         </ul>
       </Collapsible>
@@ -442,140 +443,17 @@ export default function AdminHelpPage() {
       <Collapsible
         title={
           isKy
-            ? "8. Эсептер жана укуктар (демо)"
-            : "8. Учётные записи и права доступа (демо)"
+            ? "8. Эсептер жана укуктар"
+            : "8. Учётные записи и права доступа"
         }
         defaultOpen
       >
         <div className="space-y-4 text-sm text-slate-700">
           <p>
             {isKy
-              ? "Кирүү: /admin/login. Төмөндө демо-эсептер жана ролдор."
-              : "Вход: /admin/login. Ниже — демонстрационные учётные записи и роли."}
+              ? "Кирүү: /admin/login. Логин жана сырсөз кызматкерге берилет. Каттоо эсептерин сервер жүргүзөт."
+              : "Вход: /admin/login. Логин и пароль выдаются сотруднику. Учётные записи ведёт сервер."}
           </p>
-
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] border border-slate-200 text-left text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-                <tr>
-                  <th className="border-b border-slate-200 px-3 py-2">
-                    {isKy ? "Логин" : "Логин"}
-                  </th>
-                  <th className="border-b border-slate-200 px-3 py-2">
-                    {isKy ? "Сырсөз" : "Пароль"}
-                  </th>
-                  <th className="border-b border-slate-200 px-3 py-2">
-                    {isKy ? "Роль" : "Роль"}
-                  </th>
-                  <th className="border-b border-slate-200 px-3 py-2">
-                    {isKy ? "Дайындоо" : "Назначение"}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="text-sm">
-                <tr>
-                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
-                    predsedatel
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
-                    vs2026
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2">
-                    {isKy
-                      ? "Төрага (leadership)"
-                      : "Председатель (leadership)"}
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2 text-xs text-slate-600">
-                    {isKy
-                      ? "Бардык бөлүмдөр: өтүнмөлөр, кабыл алуу, карточкалар, тапшырмалар, мониторинг, справочник"
-                      : "Все разделы: заявки, приём, карточки, поручения, мониторинг, справочник"}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
-                    priemnaya
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
-                    priem123
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2">
-                    {isKy ? "Кабыл алуу (reception)" : "Приёмная (reception)"}
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2 text-xs text-slate-600">
-                    {isKy
-                      ? "Күнүмдүк иш: кайрылуулар, даярдоо, календарь"
-                      : "Текущая работа: обращения, подготовка, календарь"}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
-                    rukovodstvo
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
-                    sud2026
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2">
-                    {isKy
-                      ? "Жетекчилик (leadership)"
-                      : "Руководство (leadership)"}
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2 text-xs text-slate-600">
-                    {isKy
-                      ? "Жеке кабыл алуу, протокол, мониторинг"
-                      : "Личный приём, протокол, мониторинг"}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
-                    otvet1
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
-                    otvet123
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2">
-                    {isKy
-                      ? "Жооптуу (responsible)"
-                      : "Ответственный (responsible)"}
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2 text-xs text-slate-600">
-                    {isKy
-                      ? "Тапшырмалардын аткарылышы (өзүнө берилген)"
-                      : "Исполнение поручений (назначенных на сотрудника)"}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
-                    otvet2
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2 font-mono">
-                    otvet123
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2">
-                    {isKy
-                      ? "Жооптуу (responsible)"
-                      : "Ответственный (responsible)"}
-                  </td>
-                  <td className="border-b border-slate-100 px-3 py-2 text-xs text-slate-600">
-                    {isKy
-                      ? "Экинчи жооптуу (демо)"
-                      : "Второй ответственный (демо)"}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2 font-mono">admin</td>
-                  <td className="px-3 py-2 font-mono">admin123</td>
-                  <td className="px-3 py-2">
-                    {isKy ? "Администратор (admin)" : "Администратор (admin)"}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-slate-600">
-                    {isKy
-                      ? "Толук жеткиликтүүлүк, графиканы жана контентти башкаруу"
-                      : "Полный доступ, настройки графика и контента"}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
 
           <p className="font-medium text-slate-900">
             {isKy ? "Ролдор боюнча мүмкүнчүлүктөр" : "Полномочия по ролям"}
@@ -590,8 +468,8 @@ export default function AdminHelpPage() {
             <li>
               <strong>leadership</strong>
               {isKy
-                ? " — кабыл алууну фиксациялоо, протокол, мониторинг; контент жана график (демо)."
-                : " — фиксация личного приёма, протокол, мониторинг; контент и график (в демо)."}
+                ? " — кабыл алууну фиксациялоо, протокол, мониторинг; контент жана график."
+                : " — фиксация личного приёма, протокол, мониторинг; контент и график."}
             </li>
             <li>
               <strong>responsible</strong>
@@ -602,8 +480,8 @@ export default function AdminHelpPage() {
             <li>
               <strong>admin</strong>
               {isKy
-                ? " — бардык бөлүмдөр; сброс демо-маалыматтар; толук башкаруу."
-                : " — все разделы; сброс демонстрационных данных; полное управление."}
+                ? " — бардык бөлүмдөр; толук башкаруу."
+                : " — все разделы; полное управление."}
             </li>
           </ul>
 
@@ -646,7 +524,7 @@ export default function AdminHelpPage() {
                       "✓",
                     ],
                     [
-                      isKy ? "Көзөмөл поручений" : "Контроль поручений",
+                      isKy ? "Тапшырмаларды көзөмөлдөө" : "Контроль поручений",
                       "✓",
                       "✓",
                       "✓*",
@@ -667,14 +545,7 @@ export default function AdminHelpPage() {
                       "✓",
                     ],
                     [
-                      isKy ? "Демо-маалыматты сброс" : "Сброс демо-данных",
-                      "—",
-                      "—",
-                      "—",
-                      "✓",
-                    ],
-                    [
-                      isKy ? "Опросник (суроолор)" : "Опросник (вопросы)",
+                      isKy ? "Сурамжылоо (суроолор)" : "Опросник (вопросы)",
                       "✓",
                       "✓",
                       "✓",
@@ -705,48 +576,9 @@ export default function AdminHelpPage() {
           </div>
           <p className="text-xs text-slate-500">
             {isKy
-              ? "* responsible — негизинен өзүнө дайындалган тапшырмалар. Демо: маалымат браузерде сакталат."
-              : "* responsible — преимущественно поручения, назначенные на сотрудника. Демо: данные хранятся в браузере."}
+              ? "* responsible — негизинен өзүнө дайындалган тапшырмалар."
+              : "* responsible — преимущественно поручения, назначенные на сотрудника."}
           </p>
-
-          <p className="font-medium text-slate-900">
-            {isKy ? "Кызматкерлердин толук аты (демо)" : "ФИО сотрудников (демо)"}
-          </p>
-          <ul className="list-disc space-y-1 pl-5 text-xs text-slate-600">
-            <li>
-              predsedatel — Сатыев М. А.,{" "}
-              {isKy
-                ? "Жогорку соттун Төрагасы"
-                : "Председатель Верховного суда КР"}
-            </li>
-            <li>
-              priemnaya — Касымова А. Б.,{" "}
-              {isKy ? "башкы адис" : "главный специалист"},{" "}
-              {isKy
-                ? "Жарандар менен иштөө бөлүмү"
-                : "отдел по работе с гражданами"}
-            </li>
-            <li>
-              rukovodstvo —{" "}
-              {isKy
-                ? "Жогорку соттун жетекчилиги (кабыл алуу)"
-                : "Руководство Верховного суда КР (приём)"}
-            </li>
-            <li>
-              otvet1 — Жумабеков Э. С.,{" "}
-              {isKy ? "жооптуу" : "ответственный по обращениям"}
-            </li>
-            <li>
-              otvet2 — Сыдыкова М. А.,{" "}
-              {isKy ? "жооптуу" : "ответственный по обращениям"}
-            </li>
-            <li>
-              admin —{" "}
-              {isKy
-                ? "администратор (толук укук)"
-                : "администратор системы"}
-            </li>
-          </ul>
         </div>
       </Collapsible>
 

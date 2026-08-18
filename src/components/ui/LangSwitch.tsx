@@ -20,7 +20,7 @@ export function LangSwitch({ className }: { className?: string }) {
       aria-pressed={lang === code}
       aria-label={label}
     >
-      {code === "ru" ? "РУС" : "КЫР"}
+      {code === "ky" ? "КЫР" : "РУС"}
     </button>
   );
 
@@ -31,11 +31,11 @@ export function LangSwitch({ className }: { className?: string }) {
         className
       )}
       role="group"
-      aria-label="Language"
+      aria-label="Тил / Язык"
     >
-      {btn("ru", "Русский")}
-      <span className="h-3 w-px bg-court-line" aria-hidden />
       {btn("ky", "Кыргызча")}
+      <span className="h-3 w-px bg-court-line" aria-hidden />
+      {btn("ru", "Русский")}
     </div>
   );
 }

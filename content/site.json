@@ -12,50 +12,50 @@
       "labelKy": "Башкы бет"
     },
     {
-      "href": "/book",
+      "href": "/electronic-appointment",
       "labelRu": "Запись на приём",
       "labelKy": "Кабыл алууга жазылуу"
     },
     {
-      "href": "/my-appointment",
+      "href": "/appointment-status",
       "labelRu": "Моя запись",
       "labelKy": "Менин жазылууум"
     },
     {
-      "href": "/feedback",
+      "href": "/service-evaluation",
       "labelRu": "Оценка приёма",
       "labelKy": "Кабыл алууну баалоо"
     },
     {
-      "href": "/rules",
+      "href": "/appointment-rules",
       "labelRu": "Правила записи",
       "labelKy": "Жазылуу эрежелери"
     }
   ],
   "hubNav": [
     {
-      "href": "/book",
+      "href": "/electronic-appointment",
       "labelRu": "Запись на приём",
       "labelKy": "Кабыл алууга жазылуу",
       "descRu": "Регистрация, тема, дата и время",
       "descKy": "Каттоо, тема, күн жана убакыт"
     },
     {
-      "href": "/my-appointment",
+      "href": "/appointment-status",
       "labelRu": "Моя запись",
       "labelKy": "Менин жазылууум",
       "descRu": "Перенос и отмена",
       "descKy": "Жылдыруу жана жокко чыгаруу"
     },
     {
-      "href": "/feedback",
+      "href": "/service-evaluation",
       "labelRu": "Оценка приёма",
       "labelKy": "Кабыл алууну баалоо",
       "descRu": "Качество онлайн-записи и приёма",
       "descKy": "Онлайн-жазылуу жана кабыл алуу сапаты"
     },
     {
-      "href": "/rules",
+      "href": "/appointment-rules",
       "labelRu": "Правила",
       "labelKy": "Эрежелер",
       "descRu": "График и ограничения",
@@ -64,8 +64,8 @@
   ],
   "footerReceptionRu": "Общественная приёмная",
   "footerReceptionKy": "Коомдук кабыл алуу",
-  "footerDemoRu": "На личном приёме не рассматриваются конкретные судебные дела и законность судебных актов.",
-  "footerDemoKy": "Жеке кабыл алууда конкреттүү сот иштери жана сот актыларынын мыйзамдуулугу каралбайт.",
+  "footerDisclaimerRu": "На личном приёме не рассматриваются конкретные судебные дела и законность судебных актов.",
+  "footerDisclaimerKy": "Жеке кабыл алууда конкреттүү сот иштери жана сот актыларынын мыйзамдуулугу каралбайт.",
   "footerIndependenceRu": "Независимость судей обеспечивается в полном объёме",
   "footerIndependenceKy": "Соттордун көз карандысыздыгы толук камсыз кылынат",
   "footerNoCasesRu": "Конкретные судебные дела на приёме не рассматриваются",

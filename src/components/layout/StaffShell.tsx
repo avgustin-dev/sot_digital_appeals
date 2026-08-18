@@ -27,6 +27,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { LangSwitch } from "@/components/ui/LangSwitch";
 import { useI18n } from "@/lib/i18n";
 import { EmblemKR } from "@/components/brand/Emblem";
+import { isChairProfile } from "@/lib/staff";
 
 type NavItem = {
   href: string;
@@ -165,7 +166,13 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   if (!ready) {
     return (
       <div className="min-h-screen bg-[#f0f2f5]">
-        <PageLoader label="Загрузка служебного кабинета…" />
+        <PageLoader
+          label={
+            isKy
+              ? "Кызматтык кабинет жүктөлүүдө…"
+              : "Загрузка служебного кабинета…"
+          }
+        />
       </div>
     );
   }
@@ -173,23 +180,25 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-[#f0f2f5]">
-        <PageLoader label="Перенаправление…" />
+        <PageLoader
+          label={isKy ? "Багыттоо…" : "Перенаправление…"}
+        />
       </div>
     );
   }
 
+  const chair = isChairProfile(currentUser);
   const roleLabel: Record<string, string> = {
     admin: isKy ? "Администратор" : "Администратор",
-    reception: isKy ? "Отдел приёма" : "Отдел приёма граждан",
-    leadership:
-      currentUser.login === "predsedatel"
-        ? isKy
-          ? "Төрага"
-          : "Председатель"
-        : isKy
-          ? "Жетекчилик"
-          : "Руководство",
-    responsible: isKy ? "Исполнитель" : "Ответственный исполнитель",
+    reception: isKy ? "Кабыл алуу бөлүмү" : "Отдел приёма граждан",
+    leadership: chair
+      ? isKy
+        ? "Төрага"
+        : "Председатель"
+      : isKy
+        ? "Жетекчилик"
+        : "Руководство",
+    responsible: isKy ? "Аткаруучу" : "Ответственный исполнитель",
   };
 
   function isActive(item: NavItem) {

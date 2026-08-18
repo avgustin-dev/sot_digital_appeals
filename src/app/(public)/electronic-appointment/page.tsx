@@ -16,6 +16,7 @@ import { PageLoader } from "@/components/ui/PageLoader";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
+import { routes } from "@/lib/routes";
 import type { AppealCategory } from "@/lib/types";
 import {
   APPLICANT_TYPES,
@@ -297,7 +298,7 @@ export default function BookPage() {
     setStep((x) => Math.max(0, x - 1));
   }
 
-  function onSubmit() {
+  async function onSubmit() {
     setError("");
     const err = validateStep(5);
     if (err) {
@@ -344,7 +345,7 @@ export default function BookPage() {
       .filter(Boolean)
       .join("\n");
 
-    const res = bookAppointment({
+    const res = await bookAppointment({
       fullName,
       phone,
       email,
@@ -427,7 +428,7 @@ export default function BookPage() {
 
   if (result) {
     return (
-      <div className="mx-auto max-w-lg px-4 py-12">
+      <div className="print-ticket-root mx-auto max-w-lg px-4 py-12">
         <div className="mb-4 flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-left">
           <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-sky-700" />
           <div>
@@ -457,7 +458,10 @@ export default function BookPage() {
             <Printer className="h-4 w-4" />
             {t.book.printSlip}
           </button>
-          <Link href="/my-appointment" className="btn-primary">
+          <Link
+            href={routes.appointmentStatusByCode(result.code)}
+            className="btn-primary"
+          >
             {t.book.manage}
           </Link>
           <Link href="/" className="btn-outline">
@@ -997,7 +1001,7 @@ export default function BookPage() {
                   )}
                   . {isKy ? "Ишеним телефону" : "Телефон доверия"}:{" "}
                   {sc.contacts.trustPhone}.{" "}
-                  <Link href="/rules" className="text-court-blue hover:underline">
+                  <Link href={routes.rules} className="text-court-blue hover:underline">
                     {L("Подробнее", "Толугураак")}
                   </Link>
                 </p>
@@ -1196,12 +1200,12 @@ export default function BookPage() {
             {L("← На главную раздела", "← Бөлүмдүн башкы бетине")}
           </Link>
           {" · "}
-          <Link href="/rules" className="text-court-blue hover:underline">
+          <Link href={routes.rules} className="text-court-blue hover:underline">
             {L("Правила", "Эрежелер")}
           </Link>
           {" · "}
           <Link
-            href="/my-appointment"
+            href={routes.appointmentStatus}
             className="text-court-blue hover:underline"
           >
             {L("Моя запись", "Менин жазылууум")}

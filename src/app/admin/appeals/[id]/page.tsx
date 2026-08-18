@@ -15,19 +15,15 @@ import {
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { StageBadge, StatusBadge } from "@/components/ui/Badge";
-import {
-  CATEGORY_LABELS,
-  STAGE_LABELS,
-  STATUS_LABELS,
-} from "@/lib/constants";
 import type { AppealCategory, AppealStage, AppointmentStatus } from "@/lib/types";
-import { formatDateRu, listAvailableDates, getAvailableSlotsForDate } from "@/lib/slots";
+import { formatDateRu } from "@/lib/slots";
 import { stageProgress, cn } from "@/lib/utils";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Collapsible } from "@/components/ui/Collapsible";
 import { useI18n } from "@/lib/i18n";
 import { ReviewRequestPanel } from "@/components/staff/ReviewRequestPanel";
 import { targetShort } from "@/lib/targets";
+import { SlotPicker } from "@/components/booking/SlotPicker";
 
 export default function AppealDetailPage() {
   const params = useParams();
@@ -45,7 +41,8 @@ export default function AppealDetailPage() {
     staffUpdateCitizenData,
     staffSetAppealStage,
   } = useStore();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const isKy = lang === "ky";
 
   const appeal = state.appeals.find((a) => a.id === id);
   const appointment = state.appointments.find(
@@ -99,21 +96,6 @@ export default function AppealDetailPage() {
     setStatusSelect(appointment.status);
   }, [appointment?.id, appointment?.updatedAt]);
 
-  const dates = useMemo(
-    () => listAvailableDates(state.calendar),
-    [state.calendar]
-  );
-  const freeSlots = useMemo(() => {
-    if (!newDate || !appointment) return [];
-    return getAvailableSlotsForDate(
-      newDate,
-      state.calendar,
-      state.appointments,
-      appointment.id,
-      appointment.targetId
-    );
-  }, [newDate, state.calendar, state.appointments, appointment]);
-
   if (!appeal) {
     return (
       <div className="card p-8 text-center">
@@ -140,23 +122,37 @@ export default function AppealDetailPage() {
     setMsg(text);
   }
 
-  function onStartPrep() {
+  async function onStartPrep() {
     if (!currentUser || !appeal) return;
-    startPrep(appeal.id, currentUser);
-    flash(true, "Переведено в предварительное изучение.");
+    const res = await startPrep(appeal.id, currentUser);
+    flash(
+      Boolean(res?.ok),
+      res?.ok
+        ? "Переведено в предварительное изучение."
+        : res?.error || "Не удалось сохранить"
+    );
   }
 
-  function onCompletePrep(e: React.FormEvent) {
+  async function onCompletePrep(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !appeal) return;
-    completePrep(appeal.id, currentUser, { summary, prepNotes, category });
-    flash(true, "Подготовка завершена. Готово к личному приёму.");
+    const res = await completePrep(appeal.id, currentUser, {
+      summary,
+      prepNotes,
+      category,
+    });
+    flash(
+      Boolean(res?.ok),
+      res?.ok
+        ? "Подготовка завершена. Готово к личному приёму."
+        : res?.error || "Не удалось сохранить"
+    );
   }
 
-  function onSaveCitizen(e: React.FormEvent) {
+  async function onSaveCitizen(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !appointment) return;
-    const res = staffUpdateCitizenData(
+    const res = await staffUpdateCitizenData(
       appointment.id,
       {
         fullName,
@@ -171,10 +167,10 @@ export default function AppealDetailPage() {
     flash(res.ok, res.ok ? "Данные сохранены." : res.error);
   }
 
-  function onReschedule(e: React.FormEvent) {
+  async function onReschedule(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !appointment) return;
-    const res = staffRescheduleAppointment(
+    const res = await staffRescheduleAppointment(
       appointment.id,
       newDate,
       newSlotStart,
@@ -184,24 +180,31 @@ export default function AppealDetailPage() {
     flash(res.ok, res.ok ? "Дата/время обновлены." : res.error);
   }
 
-  function onStage(e: React.FormEvent) {
+  async function onStage(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !appeal) return;
-    const res = staffSetAppealStage(appeal.id, stageSelect, currentUser);
-    flash(res.ok, res.ok ? `Этап: ${STAGE_LABELS[stageSelect]}` : res.error);
+    const res = await staffSetAppealStage(appeal.id, stageSelect, currentUser);
+    flash(
+      res.ok,
+      res.ok
+        ? `${isKy ? "Этап" : "Этап"}: ${t.stages[stageSelect]}`
+        : res.error
+    );
   }
 
-  function onStatus(e: React.FormEvent) {
+  async function onStatus(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser || !appointment) return;
-    const res = staffSetAppointmentStatus(
+    const res = await staffSetAppointmentStatus(
       appointment.id,
       statusSelect,
       currentUser
     );
     flash(
       res.ok,
-      res.ok ? `Статус записи: ${STATUS_LABELS[statusSelect]}` : res.error
+      res.ok
+        ? `${isKy ? "Жазылуу статусу" : "Статус записи"}: ${t.statuses[statusSelect]}`
+        : res.error
     );
   }
 
@@ -340,9 +343,9 @@ export default function AppealDetailPage() {
                   <button
                     type="button"
                     className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 hover:bg-amber-100"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!currentUser) return;
-                      const r = staffSetAppointmentStatus(
+                      const r = await staffSetAppointmentStatus(
                         appointment.id,
                         "no_show",
                         currentUser
@@ -356,13 +359,13 @@ export default function AppealDetailPage() {
                   <button
                     type="button"
                     className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-800 hover:bg-red-100"
-                    onClick={() => {
+                    onClick={async () => {
                       if (
                         !currentUser ||
                         !confirm("Отменить запись и обращение?")
                       )
                         return;
-                      const r = staffCancelAppointment(
+                      const r = await staffCancelAppointment(
                         appointment.id,
                         currentUser
                       );
@@ -379,9 +382,9 @@ export default function AppealDetailPage() {
               <button
                 type="button"
                 className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-900 hover:bg-emerald-100"
-                onClick={() => {
+                onClick={async () => {
                   if (!currentUser) return;
-                  const r = staffRestoreAppointment(
+                  const r = await staffRestoreAppointment(
                     appointment.id,
                     currentUser
                   );
@@ -480,10 +483,10 @@ export default function AppealDetailPage() {
                         setEditCategory(e.target.value as AppealCategory)
                       }
                     >
-                      {(Object.keys(CATEGORY_LABELS) as AppealCategory[]).map(
+                      {(Object.keys(t.categories) as AppealCategory[]).map(
                         (k) => (
                           <option key={k} value={k}>
-                            {CATEGORY_LABELS[k]}
+                            {t.categories[k]}
                           </option>
                         )
                       )}
@@ -525,7 +528,7 @@ export default function AppealDetailPage() {
                 <div>
                   <dt className="text-xs text-slate-500">Категория</dt>
                   <dd className="font-medium">
-                    {CATEGORY_LABELS[appeal.category]}
+                    {t.categories[appeal.category]}
                   </dd>
                 </div>
                 <div className="sm:col-span-2">
@@ -547,51 +550,21 @@ export default function AppealDetailPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                     Перенос приёма
                   </h3>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <label className="block space-y-1">
-                      <span className="text-xs font-medium text-slate-600">
-                        Дата
-                      </span>
-                      <select
-                        className="input w-full"
-                        value={newDate}
-                        onChange={(e) => {
-                          setNewDate(e.target.value);
-                          setNewSlotStart("");
-                          setNewSlotEnd("");
-                        }}
-                      >
-                        {dates.map((d) => (
-                          <option key={d} value={d}>
-                            {formatDateRu(d)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="block space-y-1 sm:col-span-2">
-                      <span className="text-xs font-medium text-slate-600">
-                        Свободный слот
-                      </span>
-                      <select
-                        className="input w-full"
-                        value={newSlotStart}
-                        onChange={(e) => {
-                          const s = freeSlots.find(
-                            (x) => x.start === e.target.value
-                          );
-                          setNewSlotStart(e.target.value);
-                          if (s) setNewSlotEnd(s.end);
-                        }}
-                      >
-                        <option value="">— выбрать —</option>
-                        {freeSlots.map((s) => (
-                          <option key={s.start} value={s.start}>
-                            {s.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  </div>
+                  <SlotPicker
+                    date={newDate}
+                    slotStart={newSlotStart}
+                    onDateChange={(d) => {
+                      setNewDate(d);
+                      setNewSlotStart("");
+                      setNewSlotEnd("");
+                    }}
+                    onSlotChange={(s, e) => {
+                      setNewSlotStart(s);
+                      setNewSlotEnd(e);
+                    }}
+                    excludeAppointmentId={appointment.id}
+                    targetId={appointment.targetId}
+                  />
                   <p className="text-[11px] text-slate-400">
                     Сейчас: {formatDateRu(appointment.date)}{" "}
                     {appointment.slotStart}–{appointment.slotEnd}
@@ -617,10 +590,10 @@ export default function AppealDetailPage() {
                       }
                     >
                       {(
-                        Object.keys(STATUS_LABELS) as AppointmentStatus[]
+                        Object.keys(t.statuses) as AppointmentStatus[]
                       ).map((k) => (
                         <option key={k} value={k}>
-                          {STATUS_LABELS[k]}
+                          {t.statuses[k]}
                         </option>
                       ))}
                     </select>
@@ -645,10 +618,10 @@ export default function AppealDetailPage() {
                         setStageSelect(e.target.value as AppealStage)
                       }
                     >
-                      {(Object.keys(STAGE_LABELS) as AppealStage[]).map(
+                      {(Object.keys(t.stages) as AppealStage[]).map(
                         (k) => (
                           <option key={k} value={k}>
-                            {STAGE_LABELS[k]}
+                            {t.stages[k]}
                           </option>
                         )
                       )}
@@ -690,10 +663,10 @@ export default function AppealDetailPage() {
                       setCategory(e.target.value as AppealCategory)
                     }
                   >
-                    {(Object.keys(CATEGORY_LABELS) as AppealCategory[]).map(
+                    {(Object.keys(t.categories) as AppealCategory[]).map(
                       (k) => (
                         <option key={k} value={k}>
-                          {CATEGORY_LABELS[k]}
+                          {t.categories[k]}
                         </option>
                       )
                     )}

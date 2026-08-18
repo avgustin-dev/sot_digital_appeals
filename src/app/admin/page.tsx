@@ -77,7 +77,7 @@ export default function StaffDashboardPage() {
   }
 
   const roleHint =
-    currentUser?.login === "predsedatel"
+    role === "admin"
       ? isKy
         ? "Толук обзор: өтүнмөлөр, кабыл алуу, карточкалар, тапшырмалар жана справочник."
         : "Полный обзор: заявки, приём, карточки, поручения и справочник."

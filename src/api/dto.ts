@@ -78,6 +78,8 @@ export type PublicAppointment = Omit<
 export type PublicAppointmentLookup = {
   appointment: PublicAppointment;
   appealStage?: import("@/lib/types").AppealStage;
+  feedback?: import("@/lib/types").Feedback;
+  latestNotification?: { title: string; body: string };
 };
 
 export type UnlockAppointmentRequest = { pin: string };

@@ -10,6 +10,7 @@ import { LangSwitch } from "@/components/ui/LangSwitch";
 import { EmblemKR } from "@/components/brand/Emblem";
 import { useStore } from "@/lib/store";
 import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
+import { routes } from "@/lib/routes";
 
 export function PublicHeader() {
   const pathname = usePathname();
@@ -51,7 +52,7 @@ export function PublicHeader() {
 
         <div className="flex items-center gap-2">
           <Link
-            href="/book"
+            href={routes.appointment}
             className="btn-primary hidden !py-1.5 !text-sm sm:inline-flex"
           >
             {cta}

@@ -15,6 +15,7 @@ import { useStore } from "@/lib/store";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { generateId } from "@/lib/utils";
 import type { SurveyOption, SurveyQuestion } from "@/lib/types";
+import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
 export default function AdminSurveyPage() {
@@ -27,6 +28,9 @@ export default function AdminSurveyPage() {
     updateSurveyMeta,
     resetSurveyQuestions,
   } = useStore();
+  const { lang } = useI18n();
+  const isKy = lang === "ky";
+  const L = (ru: string, ky: string) => (isKy ? ky : ru);
 
   const questions = useMemo(
     () =>
@@ -38,7 +42,7 @@ export default function AdminSurveyPage() {
   const [draft, setDraft] = useState<SurveyQuestion | null>(null);
   const [msg, setMsg] = useState("");
 
-  if (!ready) return <PageLoader label="Загрузка…" />;
+  if (!ready) return <PageLoader label={L("Загрузка…", "Жүктөлүүдө…")} />;
 
   const meta = state.surveyMeta;
 
@@ -122,12 +126,13 @@ export default function AdminSurveyPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-court-navy sm:text-2xl">
-            Опросник судов — в разработке
+            {L("Опросник судов — в разработке", "Соттордун сурамжылоосу — иштелип жатат")}
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-court-muted">
-            Модуль готовится отдельно. Ниже сохранён черновик вопросов; публичное
-            заполнение анкеты в этой платформе пока не запускается. Действующий
-            сервис —{" "}
+            {L(
+              "Модуль готовится отдельно. Ниже сохранён черновик вопросов; публичное заполнение анкеты в этой платформе пока не запускается. Действующий сервис — ",
+              "Модуль өзүнчө даярдалууда. Төмөндө суроолордун долбоору сакталган; бул платформада анкетаны толтуруу азырынча иштебейт. Иштеп жаткан сервис — "
+            )}
             <a
               href="https://opros.sot.kg"
               target="_blank"
@@ -136,7 +141,7 @@ export default function AdminSurveyPage() {
             >
               opros.sot.kg
             </a>
-            . Здесь — только CMS вопросов для интеграции.
+            {L(". Здесь — только CMS вопросов для интеграции.", ". Бул жерде интеграция үчүн суроолордун CMS гана бар.")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -150,11 +155,11 @@ export default function AdminSurveyPage() {
             opros.sot.kg
           </a>
           <Link href="/admin/survey/results" className="btn-outline !text-sm">
-            Сводка
+            {L("Сводка", "Жыйынтык")}
           </Link>
           <button type="button" className="btn-primary !text-sm" onClick={newQuestion}>
             <Plus className="h-4 w-4" />
-            Вопрос
+            {L("Вопрос", "Суроо")}
           </button>
         </div>
       </div>
@@ -162,7 +167,7 @@ export default function AdminSurveyPage() {
       {/* Meta */}
       <div className="card p-4 sm:p-5">
         <h2 className="text-sm font-semibold text-court-navy">
-          Заголовок анкеты
+          {L("Заголовок анкеты", "Анкетанын аталышы")}
         </h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <div>
@@ -182,7 +187,7 @@ export default function AdminSurveyPage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Описание (RU)</label>
+            <label className="label">{L("Описание (RU)", "Сүрөттөмө (RU)")}</label>
             <textarea
               className="input min-h-[64px] resize-y"
               value={meta.descriptionRu}
@@ -191,13 +196,33 @@ export default function AdminSurveyPage() {
               }
             />
           </div>
+          <div className="sm:col-span-2">
+            <label className="label">{L("Описание (KY)", "Сүрөттөмө (KY)")}</label>
+            <textarea
+              className="input min-h-[64px] resize-y"
+              value={meta.descriptionKy}
+              onChange={(e) =>
+                updateSurveyMeta({ descriptionKy: e.target.value })
+              }
+            />
+          </div>
           <div>
-            <label className="label">Суд (демо, RU)</label>
+            <label className="label">{L("Суд (RU)", "Сот (RU)")}</label>
             <input
               className="input"
               value={meta.courtNameRu}
               onChange={(e) =>
                 updateSurveyMeta({ courtNameRu: e.target.value })
+              }
+            />
+          </div>
+          <div>
+            <label className="label">{L("Суд (KY)", "Сот (KY)")}</label>
+            <input
+              className="input"
+              value={meta.courtNameKy}
+              onChange={(e) =>
+                updateSurveyMeta({ courtNameKy: e.target.value })
               }
             />
           </div>
@@ -209,23 +234,23 @@ export default function AdminSurveyPage() {
         <div className="card overflow-hidden">
           <div className="flex items-center justify-between border-b border-court-line px-4 py-3">
             <span className="text-sm font-semibold text-court-navy">
-              Вопросы ({questions.length})
+              {L("Вопросы", "Суроолор")} ({questions.length})
             </span>
             <button
               type="button"
               className="text-xs text-court-muted hover:text-court-navy"
               onClick={() => {
-                if (confirm("Сбросить вопросы к демо-набору (15 шт.)?")) {
+                if (confirm(L("Восстановить исходный набор вопросов?", "Суроолордун баштапкы топтомун кайтаруу?"))) {
                   resetSurveyQuestions();
                   setDraft(null);
                   setSelectedId(null);
-                  setMsg("Вопросы сброшены к seed.");
+                  setMsg(L("Вопросы восстановлены.", "Суроолор калыбына келтирилди."));
                 }
               }}
             >
               <span className="inline-flex items-center gap-1">
                 <RotateCcw className="h-3.5 w-3.5" />
-                Сброс seed
+                {L("Исходный набор", "Баштапкы топтом")}
               </span>
             </button>
           </div>
@@ -248,9 +273,9 @@ export default function AdminSurveyPage() {
                       {q.textRu}
                     </span>
                     <span className="mt-0.5 block text-xs text-court-muted">
-                      {q.type === "single" ? "Выбор" : "Текст"} ·{" "}
-                      {q.required ? "обяз." : "необяз."} ·{" "}
-                      {q.enabled ? "вкл" : "выкл"} ·{" "}
+                      {q.type === "single" ? L("Выбор", "Тандоо") : L("Текст", "Текст")} ·{" "}
+                      {q.required ? L("обяз.", "милдеттүү") : L("необяз.", "милдеттүү эмес")} ·{" "}
+                      {q.enabled ? L("вкл", "күйүк") : L("выкл", "өчүк")} ·{" "}
                       {q.options.length} вар.
                     </span>
                   </span>
@@ -288,13 +313,13 @@ export default function AdminSurveyPage() {
         <div className="card p-4 sm:p-5">
           {!draft ? (
             <p className="py-12 text-center text-sm text-court-muted">
-              Выберите вопрос слева или создайте новый.
+              {L("Выберите вопрос слева или создайте новый.", "Сол жактан суроо тандаңыз же жаңысын түзүңүз.")}
             </p>
           ) : (
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-sm font-semibold text-court-navy">
-                  Редактор · №{draft.order}
+                  {L("Редактор", "Түзөтүү")} · №{draft.order}
                 </h2>
                 <div className="flex gap-2">
                   <button
@@ -303,17 +328,17 @@ export default function AdminSurveyPage() {
                     onClick={saveDraft}
                   >
                     <Save className="h-4 w-4" />
-                    Сохранить
+                    {L("Сохранить", "Сактоо")}
                   </button>
                   <button
                     type="button"
                     className="btn-danger !py-1.5 !text-sm"
                     onClick={() => {
-                      if (confirm("Удалить вопрос?")) {
+                      if (confirm(L("Удалить вопрос?", "Суроону өчүрөсүзбү?"))) {
                         deleteSurveyQuestion(draft.id);
                         setDraft(null);
                         setSelectedId(null);
-                        setMsg("Вопрос удалён.");
+                        setMsg(L("Вопрос удалён.", "Суроо өчүрүлдү."));
                       }
                     }}
                   >
@@ -341,8 +366,8 @@ export default function AdminSurveyPage() {
                       })
                     }
                   >
-                    <option value="single">Один выбор (radio)</option>
-                    <option value="text">Свободный текст</option>
+                    <option value="single">{L("Один выбор (radio)", "Бир тандоо (radio)")}</option>
+                    <option value="text">{L("Свободный текст", "Эркин текст")}</option>
                   </select>
                 </div>
                 <div className="flex flex-wrap items-end gap-4 pb-1">
