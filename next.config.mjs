@@ -29,10 +29,23 @@ const nextConfig = {
         permanent: false,
       },
       { source: "/reception/rules", destination: "/rules", permanent: false },
+      { source: "/process", destination: "/", permanent: true },
+      { source: "/reception/process", destination: "/", permanent: true },
+    ];
+  },
+  async headers() {
+    return [
       {
-        source: "/reception/process",
-        destination: "/process",
-        permanent: false,
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
       },
     ];
   },

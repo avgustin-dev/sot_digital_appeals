@@ -172,7 +172,6 @@ export function defaultServiceContent(): ServiceContent {
       { href: "/my-appointment", labelRu: "Моя запись", labelKy: "Менин жазылууум" },
       { href: "/feedback", labelRu: "Оценка приёма", labelKy: "Кабыл алууну баалоо" },
       { href: "/rules", labelRu: "Правила записи", labelKy: "Жазылуу эрежелери" },
-      { href: "/process", labelRu: "Порядок работы", labelKy: "Иштөө тартиби" },
     ],
     hubNav: [
       {
@@ -203,18 +202,13 @@ export function defaultServiceContent(): ServiceContent {
         descRu: "График и ограничения",
         descKy: "График жана чектөөлөр",
       },
-      {
-        href: "/process",
-        labelRu: "Порядок работы",
-        labelKy: "Иштөө тартиби",
-        descRu: "Этапы рассмотрения",
-        descKy: "Кароо этаптары",
-      },
     ],
     footerReceptionRu: "Общественная приёмная",
     footerReceptionKy: "Коомдук кабыл алуу",
-    footerDemoRu: "Демонстрационный стенд. Данные хранятся локально",
-    footerDemoKy: "Демонстрациялык стенд. Маалымат жергиликтүү сакталат",
+    footerDemoRu:
+      "На личном приёме не рассматриваются конкретные судебные дела и законность судебных актов.",
+    footerDemoKy:
+      "Жеке кабыл алууда конкреттүү сот иштери жана сот актыларынын мыйзамдуулугу каралбайт.",
     footerIndependenceRu:
       "Независимость судей обеспечивается в полном объёме",
     footerIndependenceKy: "Соттордун көз карандысыздыгы толук камсыз кылынат",
@@ -286,9 +280,9 @@ export function defaultServiceContent(): ServiceContent {
     contacts: contactsDefault(),
     leadership: defaultLeadership(),
     processNoticeRu:
-      "Справочный раздел. Описание этапов работы сервиса. В официальной версии портала данный раздел может не публиковаться отдельно.",
+      "Этапы работы сервиса: от заявки до контроля исполнения поручения.",
     processNoticeKy:
-      "Маалымдама бөлүм. Сервистин этаптарынын сүрөттөлүшү. Расмий порталда бул бөлүм өзүнчө жарыяланбашы мүмкүн.",
+      "Сервистин этаптары: өтүнмөдөн тапшырманын аткарылышын көзөмөлдөөгө чейин.",
     processSteps: [
       {
         stageRu: "Этап 1",
@@ -401,6 +395,10 @@ export function defaultServiceContent(): ServiceContent {
   };
 }
 
+function withoutProcessPage<T extends { href: string }>(items: T[]): T[] {
+  return items.filter((i) => i.href !== "/process");
+}
+
 export function mergeServiceContent(
   partial?: Partial<ServiceContent> | null
 ): ServiceContent {
@@ -411,8 +409,12 @@ export function mergeServiceContent(
     ...partial,
     rules: { ...d.rules, ...(partial.rules ?? {}) },
     contacts: { ...d.contacts, ...(partial.contacts ?? {}) },
-    headerNav: Array.isArray(partial.headerNav) ? partial.headerNav : d.headerNav,
-    hubNav: Array.isArray(partial.hubNav) ? partial.hubNav : d.hubNav,
+    headerNav: withoutProcessPage(
+      Array.isArray(partial.headerNav) ? partial.headerNav : d.headerNav
+    ),
+    hubNav: withoutProcessPage(
+      Array.isArray(partial.hubNav) ? partial.hubNav : d.hubNav
+    ),
     leadership: Array.isArray(partial.leadership)
       ? partial.leadership.map((p) => ({
           ...d.leadership[0],

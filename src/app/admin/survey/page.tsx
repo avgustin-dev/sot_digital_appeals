@@ -122,11 +122,12 @@ export default function AdminSurveyPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-court-navy sm:text-2xl">
-            Вопросы анкеты (управление)
+            Опросник судов — в разработке
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-court-muted">
-            Редактирование формулировок вопросов. Публичное заполнение анкеты
-            и учёт ответов — в действующей системе{" "}
+            Модуль готовится отдельно. Ниже сохранён черновик вопросов; публичное
+            заполнение анкеты в этой платформе пока не запускается. Действующий
+            сервис —{" "}
             <a
               href="https://opros.sot.kg"
               target="_blank"
@@ -149,7 +150,7 @@ export default function AdminSurveyPage() {
             opros.sot.kg
           </a>
           <Link href="/admin/survey/results" className="btn-outline !text-sm">
-            Сводка (демо)
+            Сводка
           </Link>
           <button type="button" className="btn-primary !text-sm" onClick={newQuestion}>
             <Plus className="h-4 w-4" />

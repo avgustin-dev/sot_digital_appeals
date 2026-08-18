@@ -8,37 +8,64 @@ import { ORG_NAME } from "@/lib/constants";
 import { EmblemKR } from "@/components/brand/Emblem";
 import { useI18n } from "@/lib/i18n";
 import { LangSwitch } from "@/components/ui/LangSwitch";
+import { env, useRemoteApi } from "@/config/env";
+import { backend } from "@/api/client";
+import { ApiError } from "@/api/http";
+import { setAccessToken } from "@/api/session";
+import { staffHomePath } from "@/lib/staff";
 
 export default function AdminLoginPage() {
-  const { login, currentUser, ready, state } = useStore();
+  const { login, hydrateStaffSession, currentUser, ready, state } = useStore();
   const router = useRouter();
   const { lang } = useI18n();
   const isKy = lang === "ky";
   const [loginName, setLoginName] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
-  function homePath(user: { role: string; login: string }) {
-    if (user.login === "predsedatel" || user.role === "admin") return "/admin";
-    if (user.role === "responsible") return "/admin/control";
-    if (user.role === "leadership") return "/admin/reception";
-    const pending = state.appointments.some(
-      (a) => a.status === "pending_review"
-    );
-    if (user.role === "reception" && pending) return "/admin/inbox";
-    return "/admin";
-  }
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (ready && currentUser) router.replace(homePath(currentUser));
+    if (!ready || !currentUser) return;
+    const pending = state.appointments.some((a) => a.status === "pending_review");
+    router.replace(staffHomePath(currentUser, pending));
   }, [ready, currentUser, router, state.appointments]);
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const res = login(loginName, password);
-    if (!res.ok) {
-      setError(res.error || (isKy ? "Кирүү катасы" : "Ошибка входа"));
-      return;
+    setError("");
+    setBusy(true);
+    try {
+      if (useRemoteApi) {
+        const data = await backend.auth.login({
+          login: loginName.trim(),
+          password,
+        });
+        setAccessToken(data.token);
+        hydrateStaffSession(data.user);
+        return;
+      }
+      if (!env.demo) {
+        setError(
+          isKy
+            ? "Кызматтык кирүү сервер аркылуу гана мүмкүн."
+            : "Служебный вход выполняется через сервер."
+        );
+        return;
+      }
+      const res = login(loginName, password);
+      if (!res.ok) {
+        setError(res.error || (isKy ? "Кирүү катасы" : "Ошибка входа"));
+      }
+    } catch (err) {
+      const message =
+        err instanceof ApiError
+          ? err.message
+          : isKy
+            ? "Кирүү мүмкүн болгон жок"
+            : "Не удалось войти";
+      setError(message);
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -52,7 +79,7 @@ export default function AdminLoginPage() {
               {ORG_NAME}
             </div>
             <div className="text-[11px] text-slate-500">
-              Служебный кабинет
+              {isKy ? "Кызматтык кабинет" : "Служебный кабинет"}
             </div>
           </div>
           <LangSwitch />
@@ -66,8 +93,8 @@ export default function AdminLoginPage() {
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             {isKy
-              ? "Кызматкерлер үчүн · /admin"
-              : "Доступ для сотрудников · /admin"}
+              ? "Кирүү үчүн кызматтык логин жана сырсөз"
+              : "Вход по служебному логину и паролю"}
           </p>
 
           <form
@@ -107,49 +134,15 @@ export default function AdminLoginPage() {
                   {error}
                 </div>
               )}
-              <button type="submit" className="btn-primary w-full">
-                {isKy ? "Кирүү" : "Войти"}
+              <button type="submit" className="btn-primary w-full" disabled={busy}>
+                {busy
+                  ? isKy
+                    ? "Кирүүдө…"
+                    : "Вход…"
+                  : isKy
+                    ? "Кирүү"
+                    : "Войти"}
               </button>
-            </div>
-
-            <div className="mt-6 border-t border-slate-100 pt-4 text-xs text-slate-600">
-              <div className="mb-2 font-semibold text-slate-800">
-                {isKy ? "Каттоо эсептери (таанышуу үчүн)" : "Учётные записи (для ознакомления)"}
-              </div>
-              <ul className="space-y-2">
-                <li>
-                  <div className="text-slate-500">
-                    {isKy
-                      ? "Төрага — бардык бөлүмдөр"
-                      : "Председатель — полный обзор"}
-                  </div>
-                  <div className="font-mono">predsedatel / vs2026</div>
-                </li>
-                <li>
-                  <div className="text-slate-500">
-                    {isKy ? "Жарандар менен иштөө бөлүмү" : "Отдел по работе с гражданами"}
-                  </div>
-                  <div className="font-mono">priemnaya / priem123</div>
-                </li>
-                <li>
-                  <div className="text-slate-500">
-                    {isKy ? "Жетекчилик (кабыл алуу)" : "Руководство (приём)"}
-                  </div>
-                  <div className="font-mono">rukovodstvo / sud2026</div>
-                </li>
-                <li>
-                  <div className="text-slate-500">
-                    {isKy ? "Жооптуу аткаруучу" : "Ответственный исполнитель"}
-                  </div>
-                  <div className="font-mono">otvet1 / otvet123</div>
-                </li>
-                <li>
-                  <div className="text-slate-500">
-                    {isKy ? "Администратор" : "Администратор"}
-                  </div>
-                  <div className="font-mono">admin / admin123</div>
-                </li>
-              </ul>
             </div>
           </form>
 

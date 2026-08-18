@@ -1,0 +1,15 @@
+{
+  "fullName": "Асанов Нурлан Бакытович",
+  "phone": "+996700123456",
+  "email": "nurlan@example.kg",
+  "topic": "Организация приёма документов в канцелярии",
+  "category": "organization",
+  "description": "Длительное ожидание при подаче документов.",
+  "date": "2026-04-16",
+  "slotStart": "09:00",
+  "slotEnd": "09:20",
+  "targetId": "chairman",
+  "companions": [
+    { "fullName": "Асанова Айнура", "phone": "+996700123457" }
+  ]
+}

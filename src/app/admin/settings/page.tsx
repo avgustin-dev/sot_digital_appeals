@@ -14,6 +14,7 @@ import { RotateCcw, Save } from "lucide-react";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { Collapsible } from "@/components/ui/Collapsible";
 import { useI18n } from "@/lib/i18n";
+import { env } from "@/config/env";
 
 const WEEKDAYS = [
   { v: 1, l: "Понедельник" },
@@ -330,7 +331,7 @@ export default function SettingsPage() {
               <Save className="h-4 w-4" />
               {isKy ? "Сактоо" : "Сохранить"}
             </button>
-            {currentUser?.role === "admin" && (
+            {currentUser?.role === "admin" && env.demo && (
               <button
                 type="button"
                 className="btn-outline"

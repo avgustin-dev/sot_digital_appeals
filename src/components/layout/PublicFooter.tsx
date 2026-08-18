@@ -103,18 +103,6 @@ export function PublicFooter() {
                 ) || t.footer.rules}
               </Link>
             </li>
-            <li>
-              <Link
-                href="/process"
-                className="hover:text-white hover:underline"
-              >
-                {pickLocale(
-                  isKy,
-                  sc.headerNav.find((l) => l.href === "/process")?.labelRu,
-                  sc.headerNav.find((l) => l.href === "/process")?.labelKy
-                ) || t.footer.process}
-              </Link>
-            </li>
           </ul>
         </div>
 

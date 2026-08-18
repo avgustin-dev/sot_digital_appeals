@@ -129,7 +129,7 @@ export function downloadAppealsReport(input: ReportInput) {
     <thead><tr><th>Код</th><th>ФИО</th><th>Тема</th><th>Категория</th><th>Этап</th></tr></thead>
     <tbody>${rows || "<tr><td colspan='5'>Нет данных</td></tr>"}</tbody>
   </table>
-  <p class="foot">Цифровая платформа приёма граждан · демонстрационный отчёт</p>
+  <p class="foot">Цифровая платформа приёма граждан руководством Верховного суда Кыргызской Республики</p>
   <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
 </body>
 </html>`;

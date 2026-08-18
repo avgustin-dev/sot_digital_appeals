@@ -45,21 +45,12 @@ import type {
 import { generateCode, generateId, generatePin, matchCitizen } from "./utils";
 import { formatDateRu, getAvailableSlotsForDate } from "./slots";
 import { targetShort } from "./targets";
+import { toStaffProfile, type StaffProfile } from "./staff";
+import { clearAccessToken } from "@/api/session";
+import { env } from "@/config/env";
 
-export const STORAGE_KEY = "vs-kr-citizen-platform-v7";
-const STATE_VERSION = 7;
-
-function mergeStaff(
-  saved: StaffUser[] | undefined,
-  seed: StaffUser[]
-): StaffUser[] {
-  if (!saved?.length) return seed;
-  const byLogin = new Map(saved.map((s) => [s.login, s]));
-  for (const s of seed) {
-    if (!byLogin.has(s.login)) byLogin.set(s.login, s);
-  }
-  return Array.from(byLogin.values());
-}
+export const STORAGE_KEY = "vs-kr-citizen-platform-v8";
+const STATE_VERSION = 8;
 
 function seedEligibilityTree(): EligibilityTreeNode[] {
   return cloneEligibilityTree() as EligibilityTreeNode[];
@@ -96,11 +87,20 @@ function makeNotice(
   };
 }
 
+function citizenNotice(
+  email: string | undefined,
+  title: string,
+  body: string
+): NotificationItem {
+  return makeNotice(email?.trim() ? "email" : "system", title, body);
+}
+
 type ResultOk = { ok: true };
 type ResultErr = { ok: false; error: string };
 
 type PlatformStore = PlatformState & {
   login: (login: string, password: string) => ResultOk | ResultErr;
+  hydrateStaffSession: (profile: StaffProfile) => void;
   logout: () => void;
   resetDemo: () => void;
   updateCalendar: (patch: Partial<CalendarSettings>) => void;
@@ -245,16 +245,16 @@ function initialData(): PlatformState {
   return {
     version: STATE_VERSION,
     calendar: DEFAULT_CALENDAR,
-    staff: SEED_STAFF,
-    appointments: SEED_APPOINTMENTS,
-    appeals: SEED_APPEALS,
+    staff: env.demo ? SEED_STAFF : [],
+    appointments: env.demo ? SEED_APPOINTMENTS : [],
+    appeals: env.demo ? SEED_APPEALS : [],
     session: null,
     surveyMeta: { ...SEED_SURVEY_META },
     surveyQuestions: SEED_SURVEY_QUESTIONS.map((q) => ({
       ...q,
       options: q.options.map((o) => ({ ...o })),
     })),
-    surveyResponses: [...SEED_SURVEY_RESPONSES],
+    surveyResponses: env.demo ? [...SEED_SURVEY_RESPONSES] : [],
     serviceContent: mergeServiceContent(),
     adminModule: "reception",
     eligibilityTree: seedEligibilityTree(),
@@ -283,7 +283,20 @@ export const usePlatformStore = create<PlatformStore>()(
         return { ok: true };
       },
 
-      logout: () => set({ session: null }),
+      hydrateStaffSession: (profile) => {
+        set((s) => {
+          const others = s.staff.filter((u) => u.id !== profile.id);
+          return {
+            staff: [...others, { ...profile, password: "" }],
+            session: { userId: profile.id },
+          };
+        });
+      },
+
+      logout: () => {
+        clearAccessToken();
+        set({ session: null });
+      },
 
       resetDemo: () => set({ ...initialData() }),
 
@@ -399,15 +412,10 @@ export const usePlatformStore = create<PlatformStore>()(
           prepNotes: "",
           controlLog: [],
           notifications: [
-            makeNotice(
-              "sms",
+            citizenNotice(
+              input.email,
               "Заявка принята на проверку",
-              `ВС КР: заявка ${code} принята. ${who}, ${when}. Ожидайте подтверждения приёмной. PIN ${pin}. Каб. 111.`
-            ),
-            makeNotice(
-              "system",
-              "Заявка зарегистрирована",
-              `Уважаемый(ая) ${input.fullName.trim()}! Заявка на приём принята на проверку общественной приёмной. Код: ${code}. PIN: ${pin}.`
+              `Заявка ${code} принята общественной приёмной. ${who}, ${when}. Запись вступает в силу после подтверждения. Статус можно проверить на сайте по коду записи.`
             ),
           ],
           createdAt: now,
@@ -456,10 +464,10 @@ export const usePlatformStore = create<PlatformStore>()(
                   ...ap,
                   updatedAt: now,
                   notifications: [
-                    makeNotice(
-                      "sms",
+                    citizenNotice(
+                      apt.email,
                       "Запись подтверждена",
-                      `ВС КР: запись ${ap.code} подтверждена. ${who}, ${when}. Каб. 111, паспорт. PIN ${apt.pin}.`
+                      `Запись ${ap.code} подтверждена. ${who}, ${when}. Явка — кабинет № 111, документ, удостоверяющий личность.`
                     ),
                     ...ap.notifications,
                   ],
@@ -507,10 +515,10 @@ export const usePlatformStore = create<PlatformStore>()(
                   stage: "cancelled" as AppealStage,
                   updatedAt: now,
                   notifications: [
-                    makeNotice(
-                      "sms",
+                    citizenNotice(
+                      apt.email,
                       "Запись не подтверждена",
-                      `ВС КР: по заявке ${ap.code} запись не подтверждена. ${why}`
+                      `По заявке ${ap.code} запись не подтверждена. ${why}`
                     ),
                     ...ap.notifications,
                   ],
@@ -1493,7 +1501,6 @@ export const usePlatformStore = create<PlatformStore>()(
       partialize: (s) => ({
         version: s.version,
         calendar: s.calendar,
-        staff: s.staff,
         appointments: s.appointments,
         appeals: s.appeals,
         session: s.session,
@@ -1511,7 +1518,7 @@ export const usePlatformStore = create<PlatformStore>()(
           ...base,
           ...p,
           version: STATE_VERSION,
-          staff: mergeStaff(p.staff, base.staff),
+          staff: base.staff,
           appointments: (p.appointments ?? base.appointments).map((a) => ({
             ...a,
             targetId: a.targetId || "reception",
@@ -1563,7 +1570,10 @@ export function useStore() {
   }, []);
 
   const currentUser = store.session
-    ? store.staff.find((s) => s.id === store.session?.userId) ?? null
+    ? (() => {
+        const raw = store.staff.find((s) => s.id === store.session?.userId);
+        return raw ? toStaffProfile(raw) : null;
+      })()
     : null;
 
   const serviceContent = useMemo(
@@ -1595,6 +1605,7 @@ export function useStore() {
     } satisfies PlatformState,
     currentUser,
     login: store.login,
+    hydrateStaffSession: store.hydrateStaffSession,
     logout: store.logout,
     resetDemo: store.resetDemo,
     updateCalendar: store.updateCalendar,

@@ -295,13 +295,18 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
                   setOpen(false);
                 }}
                 className={cn(
-                  "rounded-md px-2 py-2 text-center text-[11px] font-semibold leading-tight transition",
+                  "rounded-md px-2 py-1.5 text-center text-[11px] font-semibold leading-tight transition",
                   survey
                     ? "bg-white text-court-navy shadow-sm"
                     : "text-slate-500 hover:text-slate-800"
                 )}
               >
-                {isKy ? "Сурамжылоо" : "Опросник"}
+                <span className="block">
+                  {isKy ? "Сурамжылоо" : "Опросник"}
+                </span>
+                <span className="mt-0.5 block text-[9px] font-medium uppercase tracking-wide text-amber-700">
+                  {isKy ? "Иштелип жатат" : "В разработке"}
+                </span>
               </Link>
             </div>
           </div>
@@ -379,8 +384,8 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
             <div className="truncate text-sm font-semibold text-slate-900">
               {survey
                 ? isKy
-                  ? "Опросник работы судов"
-                  : "Опросник работы судов"
+                  ? "Соттордун сурамжылоосу — иштелип жатат"
+                  : "Опросник судов — в разработке"
                 : isKy
                   ? "Приём граждан"
                   : "Приём граждан"}
@@ -415,6 +420,13 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className="admin-page-enter flex-1 p-3 sm:p-5 lg:p-7">
+          {survey && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              {isKy
+                ? "Модуль «Опросник судов» иштелип жатат. Анкетанын толук иштеши кийинчерээк кошулат."
+                : "Модуль «Опросник судов» в разработке. Полноценная работа анкеты будет подключена отдельно."}
+            </div>
+          )}
           {children}
         </main>
       </div>

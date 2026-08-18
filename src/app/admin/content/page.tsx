@@ -32,13 +32,7 @@ const WEEKDAYS = [
   { id: 0, ru: "Вс" },
 ];
 
-type Tab =
-  | "chrome"
-  | "home"
-  | "leadership"
-  | "book"
-  | "rules"
-  | "process";
+type Tab = "chrome" | "home" | "leadership" | "book" | "rules";
 
 function Field({
   label,
@@ -186,7 +180,6 @@ export default function ContentCmsPage() {
     { id: "home", ru: "Главная", ky: "Башкы бет" },
     { id: "book", ru: "Запись", ky: "Жазылуу" },
     { id: "rules", ru: "Правила", ky: "Эрежелер" },
-    { id: "process", ru: "Порядок работы", ky: "Иштөө тартиби" },
   ];
 
   return (
@@ -354,13 +347,13 @@ export default function ContentCmsPage() {
                 disabled={!canEdit}
               />
               <Field
-                label="Пометка демо (RU)"
+                label="Сноска в подвале (RU)"
                 value={draft.footerDemoRu}
                 onChange={(v) => patch({ footerDemoRu: v })}
                 disabled={!canEdit}
               />
               <Field
-                label="Демо белгиси (KY)"
+                label="Подвал эскертүүсү (KY)"
                 value={draft.footerDemoKy}
                 onChange={(v) => patch({ footerDemoKy: v })}
                 disabled={!canEdit}
@@ -1077,134 +1070,6 @@ export default function ContentCmsPage() {
               disabled={!canEdit}
             />
           </Pair>
-        )}
-
-        {tab === "process" && (
-          <>
-            <Pair title={isKy ? "Беттин тексти" : "Текст страницы"}>
-              <Field
-                label="Заголовок (RU)"
-                value={draft.cycleTitleRu}
-                onChange={(v) => patch({ cycleTitleRu: v })}
-                disabled={!canEdit}
-              />
-              <Field
-                label="Баш аты (KY)"
-                value={draft.cycleTitleKy}
-                onChange={(v) => patch({ cycleTitleKy: v })}
-                disabled={!canEdit}
-              />
-              <Field
-                label="Лид (RU)"
-                value={draft.cycleLeadRu}
-                onChange={(v) => patch({ cycleLeadRu: v })}
-                multiline
-                rows={3}
-                disabled={!canEdit}
-              />
-              <Field
-                label="Лид (KY)"
-                value={draft.cycleLeadKy}
-                onChange={(v) => patch({ cycleLeadKy: v })}
-                multiline
-                rows={3}
-                disabled={!canEdit}
-              />
-              <Field
-                label="Справка сверху (RU)"
-                value={draft.processNoticeRu}
-                onChange={(v) => patch({ processNoticeRu: v })}
-                multiline
-                rows={3}
-                disabled={!canEdit}
-              />
-              <Field
-                label="Жогорку эскертүү (KY)"
-                value={draft.processNoticeKy}
-                onChange={(v) => patch({ processNoticeKy: v })}
-                multiline
-                rows={3}
-                disabled={!canEdit}
-              />
-            </Pair>
-            {draft.processSteps.map((step, i) => (
-              <Pair
-                key={`${step.titleRu}-${i}`}
-                title={`${isKy ? "Этап" : "Этап"} ${i + 1}`}
-              >
-                <Field
-                  label="Метка (RU)"
-                  value={step.stageRu}
-                  onChange={(v) => {
-                    const processSteps = draft.processSteps.map((x, j) =>
-                      j === i ? { ...x, stageRu: v } : x
-                    );
-                    patch({ processSteps });
-                  }}
-                  disabled={!canEdit}
-                />
-                <Field
-                  label="Белги (KY)"
-                  value={step.stageKy}
-                  onChange={(v) => {
-                    const processSteps = draft.processSteps.map((x, j) =>
-                      j === i ? { ...x, stageKy: v } : x
-                    );
-                    patch({ processSteps });
-                  }}
-                  disabled={!canEdit}
-                />
-                <Field
-                  label="Заголовок (RU)"
-                  value={step.titleRu}
-                  onChange={(v) => {
-                    const processSteps = draft.processSteps.map((x, j) =>
-                      j === i ? { ...x, titleRu: v } : x
-                    );
-                    patch({ processSteps });
-                  }}
-                  disabled={!canEdit}
-                />
-                <Field
-                  label="Баш аты (KY)"
-                  value={step.titleKy}
-                  onChange={(v) => {
-                    const processSteps = draft.processSteps.map((x, j) =>
-                      j === i ? { ...x, titleKy: v } : x
-                    );
-                    patch({ processSteps });
-                  }}
-                  disabled={!canEdit}
-                />
-                <Field
-                  label="Пункты (RU)"
-                  value={arrayToLines(step.pointsRu)}
-                  onChange={(v) => {
-                    const processSteps = draft.processSteps.map((x, j) =>
-                      j === i ? { ...x, pointsRu: linesToArray(v) } : x
-                    );
-                    patch({ processSteps });
-                  }}
-                  multiline
-                  rows={4}
-                  disabled={!canEdit}
-                />
-                <Field
-                  label="Пункттер (KY)"
-                  value={arrayToLines(step.pointsKy)}
-                  onChange={(v) => {
-                    const processSteps = draft.processSteps.map((x, j) =>
-                      j === i ? { ...x, pointsKy: linesToArray(v) } : x
-                    );
-                    patch({ processSteps });
-                  }}
-                  multiline
-                  rows={4}
-                  disabled={!canEdit}
-                />
-              </Pair>
-            ))}
-          </>
         )}
 
         <div className="sticky bottom-3 flex flex-wrap items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-5 py-4 shadow-sm">

@@ -7,13 +7,14 @@ import {
   STAGE_LABELS,
   STATUS_LABELS,
 } from "@/lib/constants";
-import { ProgressSteps } from "@/components/ui/ProgressSteps";
 import { useI18n } from "@/lib/i18n";
+import { env } from "@/config/env";
 import { EmblemKR } from "@/components/brand/Emblem";
 import { useStore } from "@/lib/store";
 import { formatDateRu } from "@/lib/slots";
 import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
 import { CourtContactsBlock } from "@/components/ui/CourtContactsBlock";
+import { CitizenHubNav } from "@/components/layout/CitizenHubNav";
 
 /**
  * Хаб раздела «Приём граждан руководством Верховного суда Кыргызской Республики»
@@ -51,6 +52,11 @@ export default function HomePage() {
   const [statusCode, setStatusCode] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
   const [statusOk, setStatusOk] = useState(false);
+  const [statusNotice, setStatusNotice] = useState<{
+    title: string;
+    body: string;
+    email?: string;
+  } | null>(null);
 
   const [recoverPhone, setRecoverPhone] = useState("");
   const [recoverMsg, setRecoverMsg] = useState("");
@@ -85,6 +91,7 @@ export default function HomePage() {
     e.preventDefault();
     setStatusOk(false);
     setStatusMsg("");
+    setStatusNotice(null);
     const found = lookupByCode(statusCode);
     if (!found) {
       setStatusMsg(
@@ -104,6 +111,14 @@ export default function HomePage() {
         ? `${appointment.code}: ${formatDateRu(appointment.date)}, ${appointment.slotStart}–${appointment.slotEnd}. Абалы: ${stage}.`
         : `${appointment.code}: ${formatDateRu(appointment.date)}, ${appointment.slotStart}–${appointment.slotEnd}. Статус: ${stage}.`
     );
+    const latest = appeal?.notifications?.[0];
+    if (latest) {
+      setStatusNotice({
+        title: latest.title,
+        body: latest.body,
+        email: appointment.email,
+      });
+    }
   }
 
   function onRecover(e: React.FormEvent) {
@@ -173,9 +188,11 @@ export default function HomePage() {
         </div>
 
         <CourtContactsBlock isKy={isKy} showSchedule />
+        <CitizenHubNav />
 
         {/* Статистика + статус / код / оценка */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className={`grid gap-4 ${env.demo ? "lg:grid-cols-2" : ""}`}>
+          {env.demo && (
           <div className="rounded-lg border border-court-line bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-court-navy">
               {isKy
@@ -224,10 +241,11 @@ export default function HomePage() {
             </ul>
             <p className="mt-3 text-xs text-court-muted">
               {isKy
-                ? "Демо-маалыматтар учурдагы платформадан."
-                : "Демо-показатели по данным этой платформы."}
+                ? "Көрсөткүчтөр учурдагы каттоолор боюнча."
+                : "Показатели по зарегистрированным обращениям."}
             </p>
           </div>
+          )}
 
           <div className="space-y-4">
             <div className="rounded-lg border border-court-line bg-white p-5 shadow-sm">
@@ -237,9 +255,9 @@ export default function HomePage() {
                   : "Проверка состояния обращения"}
               </h2>
               <p className="mt-1 text-xs text-court-muted">
-                {isKy
-                  ? "Жазылуу кодун киргизиңиз (мисалы VS-2026-1001)."
-                  : "Введите код записи (например VS-2026-1001)."}
+                  {isKy
+                    ? "Жазылуу кодун киргизиңиз."
+                    : "Введите код записи, указанный при подтверждении."}
               </p>
               <form onSubmit={onCheckStatus} className="mt-3 space-y-2">
                 <input
@@ -253,11 +271,33 @@ export default function HomePage() {
                 </button>
               </form>
               {statusMsg && (
-                <p
-                  className={`mt-2 text-sm ${statusOk ? "text-emerald-800" : "text-rose-800"}`}
-                >
-                  {statusMsg}
-                </p>
+                <div className="mt-3 space-y-2">
+                  <p
+                    className={`text-sm ${statusOk ? "text-emerald-800" : "text-rose-800"}`}
+                  >
+                    {statusMsg}
+                  </p>
+                  {statusOk && statusNotice && (
+                    <div className="rounded-md border border-sky-100 bg-sky-50 px-3 py-2 text-sm text-sky-950">
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                        {isKy ? "Уведомление" : "Уведомление"}
+                      </div>
+                      <div className="mt-0.5 font-semibold">
+                        {statusNotice.title}
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed">
+                        {statusNotice.body}
+                      </p>
+                      {statusNotice.email ? (
+                        <p className="mt-1.5 text-[11px] text-sky-800">
+                          {isKy
+                            ? `Почта: ${statusNotice.email}`
+                            : `Направлено на почту: ${statusNotice.email}`}
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
               )}
               <Link
                 href="/my-appointment"
@@ -331,7 +371,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Предмет + цикл */}
+        {/* Предмет приёма */}
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border border-court-line bg-white p-5">
             <h3 className="font-semibold text-court-success">
@@ -354,47 +394,6 @@ export default function HomePage() {
                 <li key={i}>{i}</li>
               ))}
             </ul>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-court-line bg-white p-5 sm:p-6">
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <h2 className="section-title !mb-0">
-              {pickLocale(isKy, sc.cycleTitleRu, sc.cycleTitleKy) ||
-                t.home.cycle}
-            </h2>
-            <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500">
-              {isKy ? "Демо" : "Демо"}
-            </span>
-          </div>
-          <p className="mb-2 text-sm text-court-muted">
-            {pickLocale(isKy, sc.cycleLeadRu, sc.cycleLeadKy) || t.home.cycleLead}
-          </p>
-          <p className="mb-4 text-xs text-slate-500">
-            {isKy
-              ? "Төмөнкү этаптар — демо-түшүндүрмө. Расмий порталда бул бөлүм өзгөчө баракча катары калбашы мүмкүн."
-              : "Схема этапов приведена для демонстрации. В официальной версии отдельная страница «Порядок работы» может не публиковаться как самостоятельный раздел."}
-          </p>
-          <ProgressSteps
-            steps={sc.processSteps.map((s) => ({
-              title: pickLocale(isKy, s.titleRu, s.titleKy),
-              desc: pickLocale(isKy, s.pointsRu[0], s.pointsKy[0]),
-            }))}
-            current={0}
-          />
-          <div className="mt-4 flex flex-wrap gap-3 text-sm">
-            <Link
-              href="/process"
-              className="font-medium text-court-blue hover:underline"
-            >
-              {t.footer.process} ({isKy ? "демо" : "демо"}) →
-            </Link>
-            <Link
-              href="/rules"
-              className="font-medium text-court-blue hover:underline"
-            >
-              {t.footer.rules} →
-            </Link>
           </div>
         </div>
       </div>

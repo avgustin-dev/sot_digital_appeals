@@ -835,11 +835,7 @@ export default function AppealDetailPage() {
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-semibold text-slate-800">{n.title}</div>
                     <span className="shrink-0 rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-slate-500">
-                      {n.channel === "sms"
-                        ? "SMS"
-                        : n.channel === "email"
-                          ? "E-mail"
-                          : "система"}
+                      {n.channel === "email" ? "E-mail" : "система"}
                     </span>
                   </div>
                   <div className="mt-1 text-slate-500">{n.body}</div>

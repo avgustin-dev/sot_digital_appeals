@@ -1,0 +1,1790 @@
+openapi: 3.0.3
+info:
+  title: Платформа приёма граждан ВС КР
+  description: |
+    REST `/api/v1` для фронта Next.js.
+    Тексты-сид: `content/*.json`. Пояснения: `docs/backend/README.md`.
+    Часовой пояс Asia/Bishkek. JSON camelCase.
+  version: "1.0.0"
+
+servers:
+  - url: https://api.example.gov.kg/api/v1
+    description: Пример. Фронт задаёт NEXT_PUBLIC_API_URL без завершающего /.
+
+tags:
+  - name: Auth
+  - name: Public
+  - name: StaffAppointments
+  - name: StaffAppeals
+  - name: StaffCms
+  - name: StaffSurvey
+  - name: StaffAnalytics
+
+security: []
+
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Вход сотрудника
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+            example:
+              login: priemnaya
+              password: priem123
+      responses:
+        "200":
+          description: JWT и профиль без пароля
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Error"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Выход (опционально инвалидация токена)
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Нет тела
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Текущий сотрудник
+      operationId: me
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Профиль
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffProfile"
+        "401":
+          $ref: "#/components/responses/Error"
+
+  /public/bootstrap:
+    get:
+      tags: [Public]
+      summary: Тексты сайта, дерево допуска, календарь, опросник
+      operationId: publicBootstrap
+      responses:
+        "200":
+          description: Снимок для публичных страниц
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicBootstrap"
+
+  /public/dates:
+    get:
+      tags: [Public]
+      summary: Доступные дни записи
+      operationId: publicDates
+      parameters:
+        - $ref: "#/components/parameters/TargetId"
+      responses:
+        "200":
+          description: ISO-даты
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailableDatesResponse"
+
+  /public/slots:
+    get:
+      tags: [Public]
+      summary: Свободные слоты на дату и получателя
+      operationId: publicSlots
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - $ref: "#/components/parameters/TargetId"
+      responses:
+        "200":
+          description: Свободные интервалы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SlotDayResponse"
+
+  /public/appointments:
+    post:
+      tags: [Public]
+      summary: Подать заявку. PIN только в этом ответе.
+      operationId: bookAppointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookAppointmentRequest"
+      responses:
+        "201":
+          description: Заявка создана, статус pending_review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookAppointmentResponse"
+        "400":
+          $ref: "#/components/responses/Error"
+        "409":
+          $ref: "#/components/responses/Error"
+
+  /public/recover-codes:
+    post:
+      tags: [Public]
+      summary: Коды записей по телефону
+      operationId: recoverCodes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecoverCodesRequest"
+      responses:
+        "200":
+          description: Список кодов (можно пустой)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecoverCodesResponse"
+
+  /public/appointments/{code}:
+    get:
+      tags: [Public]
+      summary: Публичный статус по коду (без PIN, без телефона в полном виде — по политике)
+      operationId: lookupAppointment
+      parameters:
+        - $ref: "#/components/parameters/Code"
+      responses:
+        "200":
+          description: Найдено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppointmentLookup"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /public/appointments/{code}/unlock:
+    post:
+      tags: [Public]
+      summary: Полные данные записи после проверки PIN
+      operationId: unlockAppointment
+      parameters:
+        - $ref: "#/components/parameters/Code"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnlockRequest"
+      responses:
+        "200":
+          description: Запись без поля pin
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppointment"
+        "409":
+          $ref: "#/components/responses/Error"
+
+  /public/appointments/{code}/actions:
+    post:
+      tags: [Public]
+      summary: Отмена или перенос гражданином
+      operationId: citizenAppointmentAction
+      parameters:
+        - $ref: "#/components/parameters/Code"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CitizenActionRequest"
+      responses:
+        "200":
+          description: Обновлённая запись
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppointment"
+        "409":
+          $ref: "#/components/responses/Error"
+
+  /public/appointments/{code}/feedback:
+    post:
+      tags: [Public]
+      summary: Оценка приёма (после проведения)
+      operationId: submitFeedback
+      parameters:
+        - $ref: "#/components/parameters/Code"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FeedbackRequest"
+      responses:
+        "204":
+          description: Принято
+        "409":
+          $ref: "#/components/responses/Error"
+
+  /public/survey:
+    get:
+      tags: [Public]
+      summary: Анкета судов
+      operationId: publicSurvey
+      responses:
+        "200":
+          description: Мета и вопросы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurveyBundle"
+    post:
+      tags: [Public]
+      summary: Ответ на анкету (анонимно)
+      operationId: submitSurvey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitSurveyRequest"
+      responses:
+        "204":
+          description: Принято
+
+  /staff/appointments:
+    get:
+      tags: [StaffAppointments]
+      summary: Список заявок
+      operationId: listAppointments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/AppointmentStatus"
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: targetId
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Заявки без PIN
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PublicAppointment"
+
+  /staff/appointments/{id}/confirm:
+    post:
+      tags: [StaffAppointments]
+      summary: Подтвердить заявку
+      operationId: confirmAppointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmRequest"
+      responses:
+        "200":
+          description: status=confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppointment"
+
+  /staff/appointments/{id}/reject:
+    post:
+      tags: [StaffAppointments]
+      summary: Не подтвердить
+      operationId: rejectAppointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectRequest"
+      responses:
+        "200":
+          description: status=rejected, карточка cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppointment"
+
+  /staff/appointments/{id}/cancel:
+    post:
+      tags: [StaffAppointments]
+      operationId: staffCancelAppointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CancelRequest"
+      responses:
+        "200":
+          description: Отменено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppointment"
+
+  /staff/appointments/{id}/restore:
+    post:
+      tags: [StaffAppointments]
+      operationId: restoreAppointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Снова confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppointment"
+
+  /staff/appointments/{id}:
+    patch:
+      tags: [StaffAppointments]
+      summary: Правка данных гражданина
+      operationId: patchAppointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchAppointmentRequest"
+      responses:
+        "200":
+          description: Обновлено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppointment"
+
+  /staff/appointments/{id}/status:
+    post:
+      tags: [StaffAppointments]
+      operationId: setAppointmentStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetStatusRequest"
+      responses:
+        "200":
+          description: Статус записи и этап карточки согласованы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppointment"
+
+  /staff/appointments/{id}/reschedule:
+    post:
+      tags: [StaffAppointments]
+      operationId: staffReschedule
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RescheduleRequest"
+      responses:
+        "200":
+          description: status=rescheduled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAppointment"
+        "409":
+          $ref: "#/components/responses/Error"
+
+  /staff/appeals:
+    get:
+      tags: [StaffAppeals]
+      operationId: listAppeals
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: stage
+          in: query
+          schema:
+            $ref: "#/components/schemas/AppealStage"
+      responses:
+        "200":
+          description: Карточки
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AppealCard"
+
+  /staff/appeals/{id}:
+    get:
+      tags: [StaffAppeals]
+      operationId: getAppeal
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: Карточка
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppealCard"
+        "404":
+          $ref: "#/components/responses/Error"
+
+  /staff/appeals/{id}/prep:
+    post:
+      tags: [StaffAppeals]
+      summary: Завершить предварительный анализ
+      operationId: completePrep
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompletePrepRequest"
+      responses:
+        "200":
+          description: stage=under_review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppealCard"
+
+  /staff/appeals/{id}/ready:
+    post:
+      tags: [StaffAppeals]
+      operationId: markReady
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      responses:
+        "200":
+          description: stage=ready_for_reception
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppealCard"
+
+  /staff/appeals/{id}/reception:
+    post:
+      tags: [StaffAppeals]
+      summary: Протокол личного приёма и поручение
+      operationId: completeReception
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompleteReceptionRequest"
+      responses:
+        "200":
+          description: stage=reception_done, появляется assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppealCard"
+
+  /staff/appeals/{id}/control:
+    post:
+      tags: [StaffAppeals]
+      operationId: addControlLog
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddControlLogRequest"
+      responses:
+        "200":
+          description: Добавлена запись журнала
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppealCard"
+
+  /staff/appeals/{id}/assignment-status:
+    post:
+      tags: [StaffAppeals]
+      operationId: setAssignmentStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetAssignmentStatusRequest"
+      responses:
+        "200":
+          description: Статус поручения
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppealCard"
+
+  /staff/appeals/{id}/answer:
+    post:
+      tags: [StaffAppeals]
+      operationId: submitFinalAnswer
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitFinalAnswerRequest"
+      responses:
+        "200":
+          description: stage=answered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppealCard"
+
+  /staff/appeals/{id}/stage:
+    post:
+      tags: [StaffAppeals]
+      operationId: setAppealStage
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/Id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetAppealStageRequest"
+      responses:
+        "200":
+          description: Этап изменён
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppealCard"
+
+  /staff/calendar:
+    get:
+      tags: [StaffCms]
+      operationId: getCalendar
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Настройки слотов
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarSettings"
+    put:
+      tags: [StaffCms]
+      operationId: putCalendar
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalendarSettings"
+      responses:
+        "200":
+          description: Сохранено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarSettings"
+
+  /staff/content:
+    get:
+      tags: [StaffCms]
+      operationId: getContent
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Как content/site.json
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+    put:
+      tags: [StaffCms]
+      operationId: putContent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Сохранено
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /staff/eligibility:
+    get:
+      tags: [StaffCms]
+      operationId: getEligibility
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Дерево допуска
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityPayload"
+    put:
+      tags: [StaffCms]
+      operationId: putEligibility
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EligibilityPayload"
+      responses:
+        "200":
+          description: Сохранено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EligibilityPayload"
+
+  /staff/survey:
+    get:
+      tags: [StaffSurvey]
+      operationId: getSurveyAdmin
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Мета и вопросы
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurveyBundle"
+    put:
+      tags: [StaffSurvey]
+      operationId: putSurveyAdmin
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SurveyBundle"
+      responses:
+        "200":
+          description: Сохранено
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SurveyBundle"
+
+  /staff/survey/responses:
+    get:
+      tags: [StaffSurvey]
+      operationId: listSurveyResponses
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Ответы
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SurveyResponse"
+
+  /staff/analytics:
+    get:
+      tags: [StaffAnalytics]
+      operationId: analytics
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Сводка для руководства
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsResponse"
+
+  /staff/users:
+    get:
+      tags: [StaffAppointments]
+      summary: Сотрудники для выбора ответственного
+      operationId: listStaffUsers
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Без паролей
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StaffProfile"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    TargetId:
+      name: targetId
+      in: query
+      required: true
+      schema:
+        type: string
+        example: chairman
+    Code:
+      name: code
+      in: path
+      required: true
+      schema:
+        type: string
+        example: VS-2026-1842
+    Id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  responses:
+    Error:
+      description: Ошибка
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+  schemas:
+    ApiError:
+      type: object
+      required: [status, code, message]
+      properties:
+        status:
+          type: integer
+          example: 409
+        code:
+          type: string
+          example: SLOT_UNAVAILABLE
+        message:
+          type: string
+
+    Role:
+      type: string
+      enum: [reception, leadership, responsible, admin]
+
+    AppointmentStatus:
+      type: string
+      enum:
+        - pending_review
+        - confirmed
+        - rescheduled
+        - cancelled
+        - rejected
+        - completed
+        - no_show
+
+    AppealStage:
+      type: string
+      enum:
+        - registered
+        - under_review
+        - ready_for_reception
+        - reception_done
+        - in_control
+        - answered
+        - closed
+        - cancelled
+
+    AppealCategory:
+      type: string
+      enum: [organization, court_activity, legislation, other]
+
+    AssignmentStatus:
+      type: string
+      enum: [open, in_progress, done, overdue]
+
+    LoginRequest:
+      type: object
+      required: [login, password]
+      properties:
+        login:
+          type: string
+        password:
+          type: string
+
+    StaffProfile:
+      type: object
+      required: [id, login, fullName, role, position]
+      properties:
+        id:
+          type: string
+        login:
+          type: string
+        fullName:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+        position:
+          type: string
+        department:
+          type: string
+
+    LoginResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/StaffProfile"
+
+    Companion:
+      type: object
+      required: [fullName]
+      properties:
+        fullName:
+          type: string
+        phone:
+          type: string
+
+    TimeSlot:
+      type: object
+      required: [start, end, label]
+      properties:
+        start:
+          type: string
+          example: "09:00"
+        end:
+          type: string
+          example: "09:20"
+        label:
+          type: string
+          example: "09:00 – 09:20"
+
+    HistoryItem:
+      type: object
+      required: [at, action]
+      properties:
+        at:
+          type: string
+          format: date-time
+        action:
+          type: string
+        detail:
+          type: string
+
+    PublicAppointment:
+      type: object
+      required:
+        - id
+        - code
+        - fullName
+        - phone
+        - topic
+        - category
+        - date
+        - slotStart
+        - slotEnd
+        - status
+        - targetId
+        - companions
+        - createdAt
+        - updatedAt
+        - history
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        fullName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        topic:
+          type: string
+        category:
+          $ref: "#/components/schemas/AppealCategory"
+        description:
+          type: string
+        date:
+          type: string
+          format: date
+        slotStart:
+          type: string
+        slotEnd:
+          type: string
+        status:
+          $ref: "#/components/schemas/AppointmentStatus"
+        targetId:
+          type: string
+        companions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Companion"
+        reviewNote:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryItem"
+
+    BookAppointmentRequest:
+      type: object
+      required:
+        - fullName
+        - phone
+        - topic
+        - category
+        - date
+        - slotStart
+        - slotEnd
+        - targetId
+      properties:
+        fullName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        topic:
+          type: string
+        category:
+          $ref: "#/components/schemas/AppealCategory"
+        description:
+          type: string
+        date:
+          type: string
+          format: date
+        slotStart:
+          type: string
+        slotEnd:
+          type: string
+        targetId:
+          type: string
+        companions:
+          type: array
+          maxItems: 2
+          items:
+            $ref: "#/components/schemas/Companion"
+
+    BookAppointmentResponse:
+      type: object
+      required: [code, pin, appointment]
+      properties:
+        code:
+          type: string
+        pin:
+          type: string
+          description: 4 цифры, только здесь
+          example: "4831"
+        appointment:
+          $ref: "#/components/schemas/PublicAppointment"
+
+    PublicAppointmentLookup:
+      type: object
+      required: [appointment]
+      properties:
+        appointment:
+          $ref: "#/components/schemas/PublicAppointment"
+        appealStage:
+          $ref: "#/components/schemas/AppealStage"
+
+    UnlockRequest:
+      type: object
+      required: [pin]
+      properties:
+        pin:
+          type: string
+
+    CitizenActionRequest:
+      type: object
+      required: [pin, action]
+      properties:
+        pin:
+          type: string
+        action:
+          type: string
+          enum: [cancel, reschedule]
+        date:
+          type: string
+          format: date
+        slotStart:
+          type: string
+        slotEnd:
+          type: string
+
+    RecoverCodesRequest:
+      type: object
+      required: [phone]
+      properties:
+        phone:
+          type: string
+
+    RecoverCodesResponse:
+      type: object
+      required: [codes]
+      properties:
+        codes:
+          type: array
+          items:
+            type: string
+
+    FeedbackRequest:
+      type: object
+      required: [respectful, clearNextSteps, convenient, deadlinesMet]
+      properties:
+        respectful:
+          type: integer
+          minimum: 1
+          maximum: 5
+        clearNextSteps:
+          type: integer
+          minimum: 1
+          maximum: 5
+        convenient:
+          type: integer
+          minimum: 1
+          maximum: 5
+        deadlinesMet:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+
+    SlotDayResponse:
+      type: object
+      required: [date, targetId, slots]
+      properties:
+        date:
+          type: string
+          format: date
+        targetId:
+          type: string
+        slots:
+          type: array
+          items:
+            $ref: "#/components/schemas/TimeSlot"
+
+    AvailableDatesResponse:
+      type: object
+      required: [targetId, dates]
+      properties:
+        targetId:
+          type: string
+        dates:
+          type: array
+          items:
+            type: string
+            format: date
+
+    CalendarSettings:
+      type: object
+      required:
+        - receptionWeekdays
+        - dayStartMinutes
+        - dayEndMinutes
+        - slotDurationMinutes
+        - breakMinutes
+        - bookingHorizonDays
+        - closedDates
+        - extraOpenDates
+        - rulesText
+      properties:
+        receptionWeekdays:
+          type: array
+          items:
+            type: integer
+            minimum: 0
+            maximum: 6
+          description: 0=вс … 6=сб
+        dayStartMinutes:
+          type: integer
+          example: 480
+        dayEndMinutes:
+          type: integer
+          example: 720
+        slotDurationMinutes:
+          type: integer
+          example: 20
+        breakMinutes:
+          type: integer
+          example: 5
+        bookingHorizonDays:
+          type: integer
+          example: 45
+        closedDates:
+          type: array
+          items:
+            type: string
+            format: date
+        extraOpenDates:
+          type: array
+          items:
+            type: string
+            format: date
+        rulesText:
+          type: string
+
+    EligibilityNode:
+      type: object
+      required: [id, labelRu, labelKy]
+      properties:
+        id:
+          type: string
+        labelRu:
+          type: string
+        labelKy:
+          type: string
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/EligibilityNode"
+        allowed:
+          type: boolean
+        category:
+          $ref: "#/components/schemas/AppealCategory"
+        topicRu:
+          type: string
+        topicKy:
+          type: string
+        refusal:
+          type: object
+          properties:
+            greetingRu:
+              type: string
+            greetingKy:
+              type: string
+            bodyRu:
+              type: array
+              items:
+                type: string
+            bodyKy:
+              type: array
+              items:
+                type: string
+            closingRu:
+              type: string
+            closingKy:
+              type: string
+
+    EligibilityPayload:
+      type: object
+      required: [nodes]
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/EligibilityNode"
+
+    PublicBootstrap:
+      type: object
+      required: [site, eligibilityTree, calendar, survey]
+      properties:
+        site:
+          type: object
+          additionalProperties: true
+          description: Структура как content/site.json
+        eligibilityTree:
+          type: array
+          items:
+            $ref: "#/components/schemas/EligibilityNode"
+        calendar:
+          $ref: "#/components/schemas/CalendarSettings"
+        survey:
+          $ref: "#/components/schemas/SurveyBundle"
+
+    SurveyOption:
+      type: object
+      required: [id, textRu, textKy]
+      properties:
+        id:
+          type: string
+        textRu:
+          type: string
+        textKy:
+          type: string
+        isOther:
+          type: boolean
+
+    SurveyQuestion:
+      type: object
+      required: [id, order, type, required, enabled, textRu, textKy, options]
+      properties:
+        id:
+          type: string
+        order:
+          type: integer
+        type:
+          type: string
+          enum: [single, text]
+        required:
+          type: boolean
+        enabled:
+          type: boolean
+        textRu:
+          type: string
+        textKy:
+          type: string
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/SurveyOption"
+        showIf:
+          type: object
+          properties:
+            questionId:
+              type: string
+            optionIds:
+              type: array
+              items:
+                type: string
+
+    SurveyMeta:
+      type: object
+      required: [titleRu, titleKy, descriptionRu, descriptionKy, courtNameRu, courtNameKy]
+      properties:
+        titleRu:
+          type: string
+        titleKy:
+          type: string
+        descriptionRu:
+          type: string
+        descriptionKy:
+          type: string
+        courtNameRu:
+          type: string
+        courtNameKy:
+          type: string
+
+    SurveyBundle:
+      type: object
+      required: [meta, questions]
+      properties:
+        meta:
+          $ref: "#/components/schemas/SurveyMeta"
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SurveyQuestion"
+
+    SurveyAnswerValue:
+      type: object
+      properties:
+        optionId:
+          type: string
+        text:
+          type: string
+
+    SubmitSurveyRequest:
+      type: object
+      required: [answers]
+      properties:
+        courtName:
+          type: string
+        answers:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/SurveyAnswerValue"
+
+    SurveyResponse:
+      type: object
+      required: [id, at, answers]
+      properties:
+        id:
+          type: string
+        at:
+          type: string
+          format: date-time
+        courtName:
+          type: string
+        answers:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/SurveyAnswerValue"
+
+    ConfirmRequest:
+      type: object
+      properties:
+        note:
+          type: string
+
+    RejectRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+
+    CancelRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+
+    PatchAppointmentRequest:
+      type: object
+      properties:
+        fullName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        topic:
+          type: string
+        category:
+          $ref: "#/components/schemas/AppealCategory"
+        description:
+          type: string
+
+    SetStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/AppointmentStatus"
+        note:
+          type: string
+
+    RescheduleRequest:
+      type: object
+      required: [date, slotStart, slotEnd]
+      properties:
+        date:
+          type: string
+          format: date
+        slotStart:
+          type: string
+        slotEnd:
+          type: string
+
+    NotificationItem:
+      type: object
+      required: [id, at, channel, title, body, read]
+      properties:
+        id:
+          type: string
+        at:
+          type: string
+          format: date-time
+        channel:
+          type: string
+          enum: [system, email, sms]
+        title:
+          type: string
+        body:
+          type: string
+        read:
+          type: boolean
+
+    ControlLogEntry:
+      type: object
+      required: [id, at, authorId, authorName, action, comment]
+      properties:
+        id:
+          type: string
+        at:
+          type: string
+          format: date-time
+        authorId:
+          type: string
+        authorName:
+          type: string
+        action:
+          type: string
+        comment:
+          type: string
+
+    Assignment:
+      type: object
+      required: [text, responsibleUserId, responsibleName, dueDate, status, createdAt]
+      properties:
+        text:
+          type: string
+        responsibleUserId:
+          type: string
+        responsibleName:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        status:
+          $ref: "#/components/schemas/AssignmentStatus"
+        createdAt:
+          type: string
+          format: date-time
+
+    ReceptionProtocol:
+      type: object
+      required:
+        - heldAt
+        - heldBy
+        - citizenStatement
+        - leadershipExplanation
+        - assignmentText
+        - responsibleUserId
+        - responsibleName
+        - specialistsInvolved
+      properties:
+        heldAt:
+          type: string
+          format: date-time
+        heldBy:
+          type: string
+        citizenStatement:
+          type: string
+        leadershipExplanation:
+          type: string
+        assignmentText:
+          type: string
+        responsibleUserId:
+          type: string
+        responsibleName:
+          type: string
+        specialistsInvolved:
+          type: string
+        notes:
+          type: string
+
+    Feedback:
+      type: object
+      required: [respectful, clearNextSteps, convenient, deadlinesMet, submittedAt]
+      properties:
+        respectful:
+          type: number
+        clearNextSteps:
+          type: number
+        convenient:
+          type: number
+        deadlinesMet:
+          type: number
+        comment:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+
+    AppealCard:
+      type: object
+      required:
+        - id
+        - appointmentId
+        - code
+        - fullName
+        - phone
+        - topic
+        - category
+        - summary
+        - stage
+        - previousAppealIds
+        - previousNotes
+        - prepNotes
+        - controlLog
+        - notifications
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+        appointmentId:
+          type: string
+        code:
+          type: string
+        fullName:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        topic:
+          type: string
+        category:
+          $ref: "#/components/schemas/AppealCategory"
+        summary:
+          type: string
+        stage:
+          $ref: "#/components/schemas/AppealStage"
+        previousAppealIds:
+          type: array
+          items:
+            type: string
+        previousNotes:
+          type: string
+        prepNotes:
+          type: string
+        prepCompletedBy:
+          type: string
+        prepCompletedAt:
+          type: string
+          format: date-time
+        receptionProtocol:
+          $ref: "#/components/schemas/ReceptionProtocol"
+        assignment:
+          $ref: "#/components/schemas/Assignment"
+        controlLog:
+          type: array
+          items:
+            $ref: "#/components/schemas/ControlLogEntry"
+        finalAnswer:
+          type: string
+        finalAnswerAt:
+          type: string
+          format: date-time
+        feedback:
+          $ref: "#/components/schemas/Feedback"
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationItem"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CompletePrepRequest:
+      type: object
+      required: [summary, prepNotes, category]
+      properties:
+        summary:
+          type: string
+        prepNotes:
+          type: string
+        category:
+          $ref: "#/components/schemas/AppealCategory"
+
+    CompleteReceptionRequest:
+      type: object
+      required:
+        - citizenStatement
+        - leadershipExplanation
+        - assignmentText
+        - responsibleUserId
+        - responsibleName
+        - specialistsInvolved
+      properties:
+        citizenStatement:
+          type: string
+        leadershipExplanation:
+          type: string
+        assignmentText:
+          type: string
+        responsibleUserId:
+          type: string
+        responsibleName:
+          type: string
+        specialistsInvolved:
+          type: string
+        notes:
+          type: string
+
+    AddControlLogRequest:
+      type: object
+      required: [action, comment]
+      properties:
+        action:
+          type: string
+        comment:
+          type: string
+
+    SetAssignmentStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/AssignmentStatus"
+
+    SubmitFinalAnswerRequest:
+      type: object
+      required: [answer]
+      properties:
+        answer:
+          type: string
+
+    SetAppealStageRequest:
+      type: object
+      required: [stage]
+      properties:
+        stage:
+          $ref: "#/components/schemas/AppealStage"
+        note:
+          type: string
+
+    AnalyticsResponse:
+      type: object
+      required: [byStage, byCategory, quality, repeated, topThemes]
+      properties:
+        byStage:
+          type: object
+          additionalProperties:
+            type: integer
+        byCategory:
+          type: object
+          additionalProperties:
+            type: integer
+        quality:
+          type: object
+          required: [count, respectful, clearNextSteps, convenient, deadlinesMet, overall]
+          properties:
+            count:
+              type: integer
+            respectful:
+              type: number
+            clearNextSteps:
+              type: number
+            convenient:
+              type: number
+            deadlinesMet:
+              type: number
+            overall:
+              type: number
+        repeated:
+          type: array
+          items:
+            type: object
+            required: [name, phone, count, themes, codes, ids]
+            properties:
+              name:
+                type: string
+              phone:
+                type: string
+              count:
+                type: integer
+              themes:
+                type: array
+                items:
+                  type: string
+              codes:
+                type: array
+                items:
+                  type: string
+              ids:
+                type: array
+                items:
+                  type: string
+        topThemes:
+          type: array
+          items:
+            type: object
+            required: [theme, count]
+            properties:
+              theme:
+                type: string
+              count:
+                type: integer

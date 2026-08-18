@@ -1,0 +1,11 @@
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9.example",
+  "user": {
+    "id": "u-reception",
+    "login": "priemnaya",
+    "fullName": "Касымова Айгуль Бакытовна",
+    "role": "reception",
+    "position": "Главный специалист",
+    "department": "Отдел по работе с гражданами"
+  }
+}

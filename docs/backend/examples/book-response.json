@@ -1,0 +1,31 @@
+{
+  "code": "VS-2026-1842",
+  "pin": "4831",
+  "appointment": {
+    "id": "apt-1842",
+    "code": "VS-2026-1842",
+    "fullName": "Асанов Нурлан Бакытович",
+    "phone": "+996700123456",
+    "email": "nurlan@example.kg",
+    "topic": "Организация приёма документов в канцелярии",
+    "category": "organization",
+    "description": "Длительное ожидание при подаче документов.",
+    "date": "2026-04-16",
+    "slotStart": "09:00",
+    "slotEnd": "09:20",
+    "status": "pending_review",
+    "targetId": "chairman",
+    "companions": [
+      { "fullName": "Асанова Айнура", "phone": "+996700123457" }
+    ],
+    "createdAt": "2026-03-20T11:04:00+06:00",
+    "updatedAt": "2026-03-20T11:04:00+06:00",
+    "history": [
+      {
+        "at": "2026-03-20T11:04:00+06:00",
+        "action": "Заявка подана",
+        "detail": "Ожидает решения приёмной."
+      }
+    ]
+  }
+}

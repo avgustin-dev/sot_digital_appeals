@@ -32,6 +32,11 @@ export function VisitTicket({
   const sc = mergeServiceContent(state.serviceContent);
   const contacts = sc.contacts;
   const org = pickLocale(!!isKy, sc.orgNameRu, sc.orgNameKy);
+  const apt = state.appointments.find((a) => a.code === code);
+  const appeal = state.appeals.find(
+    (a) => a.code === code || a.appointmentId === apt?.id
+  );
+  const latest = appeal?.notifications?.[0];
   const qr = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(code)}`;
   return (
     <div
@@ -108,6 +113,22 @@ export function VisitTicket({
           <div className="mt-1 font-mono text-[10px] text-slate-500">{code}</div>
         </div>
       </div>
+      {latest && (
+        <div className="border-t border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+            {isKy ? "Уведомление" : "Уведомление"}
+          </div>
+          <div className="mt-0.5 font-semibold">{latest.title}</div>
+          <p className="mt-1 text-xs leading-relaxed">{latest.body}</p>
+          {apt?.email ? (
+            <p className="mt-2 text-[11px] text-sky-800">
+              {isKy
+                ? `Көчүрмө электрондук почтага жөнөтүлөт: ${apt.email}`
+                : `Копия направляется на электронную почту: ${apt.email}`}
+            </p>
+          ) : null}
+        </div>
+      )}
       <div className="border-t border-court-line bg-court-mist px-4 py-3 text-xs leading-relaxed text-slate-700">
         <p className="font-semibold text-court-navy">
           {isKy ? "Кабыл алууга эскертме" : "Памятка к визиту"}

@@ -7,6 +7,7 @@ import { VisitTicket } from "@/components/booking/VisitTicket";
 import { StatusBadge } from "@/components/ui/Badge";
 import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
+import { env } from "@/config/env";
 import { formatDateRu, weekdayRu } from "@/lib/slots";
 import type { Appointment, AppealCard } from "@/lib/types";
 import {
@@ -281,6 +282,7 @@ export default function MyAppointmentPage() {
             </Link>
           )}
 
+          {env.demo && (
           <div className="border border-dashed border-court-line bg-white p-4 text-xs text-court-muted">
             {t.my.demo}:{" "}
             <button
@@ -309,6 +311,7 @@ export default function MyAppointmentPage() {
             {" / "}
             <span className="font-mono font-semibold">5502</span>
           </div>
+          )}
         </aside>
 
         <div className="min-w-0 space-y-4">
@@ -403,6 +406,21 @@ export default function MyAppointmentPage() {
                 pending={apt.status === "pending_review"}
                 isKy={isKy}
               />
+          {apt && appeal && appeal.notifications.length > 0 && (
+            <div className="rounded-lg border border-court-line bg-white p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-court-muted">
+                {isKy ? "Уведомления" : "Уведомления по заявке"}
+              </div>
+              <ul className="mt-2 space-y-2">
+                {appeal.notifications.map((n) => (
+                  <li key={n.id} className="text-sm text-court-ink">
+                    <div className="font-semibold">{n.title}</div>
+                    <p className="mt-0.5 text-xs text-court-muted">{n.body}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
             <div className="card p-5 sm:p-6" id="my-slip">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>

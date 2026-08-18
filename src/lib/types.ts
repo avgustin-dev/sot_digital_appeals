@@ -40,7 +40,7 @@ export type AppealCategory =
 export interface StaffUser {
   id: string;
   login: string;
-  password: string;
+  password?: string;
   fullName: string;
   role: Exclude<Role, "citizen">;
   position: string;
