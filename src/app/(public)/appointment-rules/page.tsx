@@ -9,7 +9,6 @@ import { Collapsible } from "@/components/ui/Collapsible";
 import { useI18n } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { mergeServiceContent } from "@/lib/serviceContent";
-import { BOOKING_RULES } from "@/lib/eligibility";
 import { CourtContactsBlock } from "@/components/ui/CourtContactsBlock";
 
 /**
@@ -22,7 +21,7 @@ export default function RulesPage() {
   const isKy = lang === "ky";
   const cal = state.calendar;
   const sc = mergeServiceContent(state.serviceContent);
-  const rules = sc.rules ?? BOOKING_RULES;
+  const rules = sc.rules;
 
   if (!ready) {
     return <PageLoader />;

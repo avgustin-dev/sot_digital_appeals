@@ -23,8 +23,6 @@ import {
   REGIONS_KR,
 } from "@/lib/constants";
 import {
-  BOOKING_RULES,
-  cloneEligibilityTree,
   getLeaf,
   getPathRefusal,
   isPathAllowed,
@@ -45,10 +43,8 @@ export default function BookPage() {
   const isKy = lang === "ky";
 
   const sc = mergeServiceContent(state.serviceContent);
-  const rules = sc.rules ?? BOOKING_RULES;
-  const eligibilityTree = (state.eligibilityTree?.length
-    ? state.eligibilityTree
-    : cloneEligibilityTree()) as EligibilityNode[];
+  const rules = sc.rules;
+  const eligibilityTree = (state.eligibilityTree ?? []) as EligibilityNode[];
   const bookTitle = isKy
     ? sc.bookTitleKy || sc.bookTitleRu
     : sc.bookTitleRu || sc.bookTitleKy;
@@ -101,7 +97,7 @@ export default function BookPage() {
   const [address, setAddress] = useState("");
   const [residenceType, setResidenceType] = useState("registration");
 
-  const [target, setTarget] = useState("reception");
+  const [target, setTarget] = useState("");
   const [topic, setTopic] = useState("");
   const [category, setCategory] = useState<AppealCategory>("organization");
   const [description, setDescription] = useState("");
@@ -198,6 +194,11 @@ export default function BookPage() {
       );
     }
     if (s === 1) {
+      if (eligibilityTree.length === 0)
+        return L(
+          "Дерево допуска не заполнено. Обратитесь в приёмную.",
+          "Допуск дарагы толтурула элек. Кабыл алууга кайрылыңыз."
+        );
       if (path.length === 0)
         return L("Выберите категорию.", "Категорияны тандаңыз.");
       if (blocked)
@@ -248,6 +249,11 @@ export default function BookPage() {
         );
     }
     if (s === 4) {
+      if (!bookableTargets(sc).length)
+        return L(
+          "Список должностных лиц не заполнен в админке.",
+          "Кызмат адамдарынын тизмеси админкада толтурула элек."
+        );
       if (!target)
         return L(
           "Укажите должностное лицо, к которому записываетесь.",
@@ -490,18 +496,10 @@ export default function BookPage() {
 
         <div className="mb-6 text-center">
           <h1 className="text-xl font-bold text-court-navy sm:text-2xl">
-            {bookTitle ||
-              L(
-                "Электронная запись на личный приём",
-                "Жеке кабыл алууга электрондук жазылуу"
-              )}
+            {bookTitle || t.book.title}
           </h1>
           <p className="mt-1 text-sm font-medium text-court-ink">
-            {bookSubtitle ||
-              L(
-                "Верховный суд Кыргызской Республики",
-                "Кыргыз Республикасынын Жогорку соту"
-              )}
+            {bookSubtitle || t.orgName}
           </p>
           <p className="mt-0.5 text-xs text-court-muted">
             {L(
@@ -525,10 +523,7 @@ export default function BookPage() {
                 {L(rules.titleRu, rules.titleKy)}
               </h2>
               <ol className="list-decimal space-y-1.5 pl-5">
-                {(
-                  (isKy ? rules.rulesKy : rules.rulesRu) ??
-                  (isKy ? BOOKING_RULES.rulesKy : BOOKING_RULES.rulesRu)
-                ).map((r) => (
+                {(isKy ? rules.rulesKy : rules.rulesRu).map((r) => (
                   <li key={r}>{r}</li>
                 ))}
               </ol>
@@ -537,10 +532,7 @@ export default function BookPage() {
                   {L(rules.cannotTitleRu, rules.cannotTitleKy)}
                 </div>
                 <ul className="mt-1 list-disc space-y-1 pl-4 text-amber-950/90">
-                  {(
-                    (isKy ? rules.cannotKy : rules.cannotRu) ??
-                    (isKy ? BOOKING_RULES.cannotKy : BOOKING_RULES.cannotRu)
-                  ).map((r) => (
+                  {(isKy ? rules.cannotKy : rules.cannotRu).map((r) => (
                     <li key={r}>{r}</li>
                   ))}
                 </ul>
@@ -566,6 +558,14 @@ export default function BookPage() {
           {/* 1 Допуск KZ */}
           {step === 1 && (
             <div className="space-y-5">
+              {eligibilityTree.length === 0 ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                  {isKy
+                    ? "Даракчасы дагы админкада толтурула элек. Жазылуу убактылуу жеткиликсиз."
+                    : "Дерево допуска ещё не заполнено в админке. Запись временно недоступна."}
+                </p>
+              ) : (
+                <>
               {levels.map((lvl) => (
                 <div key={lvl.levelIndex}>
                   <h2 className="mb-2 text-sm font-semibold text-court-ink">
@@ -580,6 +580,8 @@ export default function BookPage() {
                 </div>
               ))}
               {blocked && refusalMsg && <RefusalBlock msg={refusalMsg} />}
+                </>
+              )}
             </div>
           )}
 
@@ -992,12 +994,23 @@ export default function BookPage() {
                     setSlotEnd("");
                   }}
                 >
+                  <option value="">
+                    {isKy ? "Тандаңыз" : "Выберите"}
+                  </option>
                   {bookableTargets(sc).map((r) => (
                     <option key={r.id} value={r.id}>
-                      {pickLocale(isKy, r.bookLabelRu, r.bookLabelKy)}
+                      {pickLocale(isKy, r.bookLabelRu, r.bookLabelKy) ||
+                        pickLocale(isKy, r.fullNameRu, r.fullNameKy)}
                     </option>
                   ))}
                 </select>
+                {bookableTargets(sc).length === 0 && (
+                  <p className="mt-1.5 text-xs text-rose-800">
+                    {isKy
+                      ? "Жетекчилик админкада кошула элек."
+                      : "Руководство ещё не добавлено в админке."}
+                  </p>
+                )}
                 <p className="mt-1.5 text-[11px] leading-relaxed text-court-muted">
                   {pickLocale(isKy, sc.bookTargetHintRu, sc.bookTargetHintKy)}{" "}
                   {pickLocale(

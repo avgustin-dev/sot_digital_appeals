@@ -51,8 +51,8 @@ import { backend } from "@/api/client";
 import { env, useRemoteApi } from "@/config/env";
 import { wrapRemote, withPin } from "./storeRemote";
 
-export const STORAGE_KEY = "vs-kr-citizen-platform-v8";
-const STATE_VERSION = 8;
+export const STORAGE_KEY = "vs-kr-citizen-platform-v9";
+const STATE_VERSION = 9;
 
 function seedEligibilityTree(): EligibilityTreeNode[] {
   return cloneEligibilityTree() as EligibilityTreeNode[];
@@ -1518,9 +1518,28 @@ export const usePlatformStore = create<PlatformStore>()(
           appeals: s.appeals.some(
             (a) => a.id === apl.id || a.code === apl.code
           )
-            ? s.appeals.map((a) =>
-                a.id === apl.id || a.code === apl.code ? { ...a, ...apl } : a
-              )
+            ? s.appeals.map((a) => {
+                if (a.id !== apl.id && a.code !== apl.code) return a;
+                return {
+                  ...a,
+                  ...apl,
+                  assignment: apl.assignment ?? a.assignment,
+                  receptionProtocol:
+                    apl.receptionProtocol ?? a.receptionProtocol,
+                  controlLog:
+                    apl.controlLog?.length ? apl.controlLog : a.controlLog,
+                  notifications: apl.notifications?.length
+                    ? apl.notifications
+                    : a.notifications,
+                  feedback: apl.feedback ?? a.feedback,
+                  finalAnswer: apl.finalAnswer ?? a.finalAnswer,
+                  finalAnswerAt: apl.finalAnswerAt ?? a.finalAnswerAt,
+                  previousAppealIds: apl.previousAppealIds?.length
+                    ? apl.previousAppealIds
+                    : a.previousAppealIds,
+                  prepNotes: apl.prepNotes || a.prepNotes,
+                };
+              })
             : [...s.appeals, apl],
         })),
 
@@ -1561,6 +1580,11 @@ export const usePlatformStore = create<PlatformStore>()(
               version: s.version,
               session: s.session,
               adminModule: s.adminModule,
+              staff: s.session
+                ? s.staff
+                    .filter((u) => u.id === s.session?.userId)
+                    .map((u) => ({ ...u, password: "" }))
+                : [],
             }
           : {
               version: s.version,
@@ -1582,7 +1606,11 @@ export const usePlatformStore = create<PlatformStore>()(
           ...base,
           ...p,
           version: STATE_VERSION,
-          staff: base.staff,
+          staff: env.apiUrl
+            ? Array.isArray(p.staff)
+              ? p.staff.map((u) => ({ ...u, password: "" }))
+              : []
+            : base.staff,
           appointments: (p.appointments ?? base.appointments).map((a) => ({
             ...a,
             targetId: a.targetId || "reception",
@@ -1613,6 +1641,7 @@ export const usePlatformStore = create<PlatformStore>()(
 export function useStore() {
   const store = usePlatformStore();
   const [ready, setReady] = useState(false);
+  const [sessionReady, setSessionReady] = useState(!useRemoteApi);
   const remote = wrapRemote(
     store as never,
     () => usePlatformStore.getState() as never
@@ -1637,7 +1666,11 @@ export function useStore() {
   }, []);
 
   useEffect(() => {
-    if (!ready || !useRemoteApi) return;
+    if (!ready) return;
+    if (!useRemoteApi) {
+      setSessionReady(true);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const s = usePlatformStore.getState();
@@ -1645,10 +1678,14 @@ export function useStore() {
         const boot = await backend.public.bootstrap();
         if (!cancelled) s.applyBootstrap(boot);
       } catch {
-        /* каталог content/ остаётся источником */
+        /* тексты сайта приходят с GET /public/bootstrap */
       }
       const token = getAccessToken();
-      if (!token || cancelled) return;
+      if (!token) {
+        if (s.session && !cancelled) s.logout();
+        if (!cancelled) setSessionReady(true);
+        return;
+      }
       try {
         const me = await backend.auth.me();
         if (cancelled) return;
@@ -1670,6 +1707,8 @@ export function useStore() {
         });
       } catch {
         s.logout();
+      } finally {
+        if (!cancelled) setSessionReady(true);
       }
     })();
     return () => {
@@ -1691,6 +1730,7 @@ export function useStore() {
 
   return {
     ready,
+    sessionReady,
     state: {
       version: store.version,
       calendar: store.calendar,
@@ -1753,7 +1793,7 @@ export function useStore() {
     updateServiceContent: remote.updateServiceContent,
     updateBookingRules: store.updateBookingRules,
     setAdminModule: store.setAdminModule,
-    resetServiceContent: store.resetServiceContent,
+    resetServiceContent: remote.resetServiceContent,
     setEligibilityTree: remote.setEligibilityTree,
     patchEligibilityNode: remote.patchEligibilityNode,
     removeEligibilityNode: remote.removeEligibilityNode,

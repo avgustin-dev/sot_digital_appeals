@@ -51,6 +51,7 @@ export function CourtContactsBlock({
           compact ? "sm:grid-cols-1" : "sm:grid-cols-2"
         )}
       >
+      {c.trustPhoneTel ? (
         <a
           href={`tel:${c.trustPhoneTel}`}
           className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5 transition hover:border-court-blue/40"
@@ -65,6 +66,7 @@ export function CourtContactsBlock({
             </div>
           </div>
         </a>
+      ) : null}
         <div className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5">
           <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-court-blue" />
           <div>
@@ -81,7 +83,7 @@ export function CourtContactsBlock({
         </div>
       </div>
 
-      {showSchedule && (
+      {showSchedule && schedule.length > 0 && (
         <div className="mt-4 overflow-x-auto">
           <table className="admin-table min-w-[520px] text-left">
             <thead>

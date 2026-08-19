@@ -87,7 +87,7 @@ export interface Appointment {
   slotStart: string;
   slotEnd: string;
   status: AppointmentStatus;
-  /** К кому записан — id из RECEPTION_TARGETS */
+  /** К кому записан — id лица из CMS (leadership[].id) */
   targetId: string;
   companions: Companion[];
   reviewNote?: string;

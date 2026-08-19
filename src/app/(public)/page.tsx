@@ -58,6 +58,7 @@ export default function HomePage() {
   const [recoverPhone, setRecoverPhone] = useState("");
   const [recoverMsg, setRecoverMsg] = useState("");
   const [recoverCodes, setRecoverCodes] = useState<string[]>([]);
+  const [evalHref, setEvalHref] = useState("");
   const [rateCode, setRateCode] = useState("");
 
   async function onCheckStatus(e: React.FormEvent) {
@@ -65,6 +66,7 @@ export default function HomePage() {
     setStatusOk(false);
     setStatusMsg("");
     setStatusNotice(null);
+    setEvalHref("");
     const found = await lookupByCode(statusCode);
     if (!found) {
       setStatusMsg(
@@ -84,16 +86,15 @@ export default function HomePage() {
         ["answered", "closed", "reception_done", "in_control"].includes(
           appeal.stage
         ));
-    if (visitDone && !appeal?.feedback) {
-      router.push(evaluationHref(appointment.code));
-      return;
-    }
     setStatusOk(true);
     setStatusMsg(
       isKy
         ? `${appointment.code}: ${formatDateRu(appointment.date)}, ${appointment.slotStart}–${appointment.slotEnd}. Абалы: ${stage}.`
         : `${appointment.code}: ${formatDateRu(appointment.date)}, ${appointment.slotStart}–${appointment.slotEnd}. Статус: ${stage}.`
     );
+    if (visitDone && !appeal?.feedback) {
+      setEvalHref(evaluationHref(appointment.code));
+    }
     const latest = appeal?.notifications?.[0];
     if (latest) {
       setStatusNotice({
@@ -225,6 +226,16 @@ export default function HomePage() {
                         </p>
                       ) : null}
                     </div>
+                  )}
+                  {statusOk && evalHref && (
+                    <Link
+                      href={evalHref}
+                      className="inline-block text-sm font-medium text-court-blue hover:underline"
+                    >
+                      {isKy
+                        ? "Сервисти баалоо →"
+                        : "Оценить сервис →"}
+                    </Link>
                   )}
                   {statusOk && (
                     <Link

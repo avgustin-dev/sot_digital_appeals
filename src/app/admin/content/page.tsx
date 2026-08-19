@@ -147,7 +147,7 @@ export default function ContentCmsPage() {
   useEffect(() => {
     if (!ready) return;
     setDraft(mergeServiceContent(state.serviceContent));
-  }, [ready]);
+  }, [ready, state.serviceContent]);
 
   if (!ready) return <PageLoader label={isKy ? "Жүктөө…" : "Загрузка…"} />;
 
@@ -195,20 +195,26 @@ export default function ContentCmsPage() {
     setMsg(isKy ? "Сакталды. Коомдук бөлүм жаңыртылды." : "Сохранено. Публичный раздел обновлён.");
   }
 
-  function onReset() {
+  async function onReset() {
     if (!canEdit) return;
     if (
       !window.confirm(
         isKy
-          ? "Бардык тексттерди жана ФИО жетекчиликти демейкиге кайтаруу?"
-          : "Вернуть все тексты и ФИО руководства к значениям по умолчанию?"
+          ? "Бардык тексттерди жана жетекчиликти тазалоо? Сайт бош калат, кайра админкадан толтурасыз."
+          : "Очистить все тексты и руководство? Сайт станет пустым, заполните заново через админку."
       )
     ) {
       return;
     }
-    resetServiceContent();
+    const saved = await resetServiceContent();
+    if (saved && "ok" in saved && !saved.ok) {
+      setErr(true);
+      setMsg(saved.error);
+      return;
+    }
+    setDraft(mergeServiceContent());
     setErr(false);
-    setMsg(isKy ? "Демейкиге кайтарылды." : "Сброшено к значениям по умолчанию.");
+    setMsg(isKy ? "Тазаланды. Кайра толтуруңуз." : "Очищено. Заполните заново.");
   }
 
   const tabs: { id: Tab; ru: string; ky: string }[] = [
@@ -1165,7 +1171,7 @@ export default function ContentCmsPage() {
             disabled={!canEdit}
           >
             <RotateCcw className="h-4 w-4" />
-            {isKy ? "Демейкиге" : "Сбросить"}
+            {isKy ? "Тазалоо" : "Очистить"}
           </button>
           {msg && (
             <span

@@ -16,10 +16,22 @@ export default function FeedbackByCodePage() {
   const { ready, getAppealByCode, submitFeedback, lookupByCode } = useStore();
   const { t, lang } = useI18n();
   const isKy = lang === "ky";
+  const [lookupDone, setLookupDone] = useState(false);
 
   useEffect(() => {
-    if (!ready || !code) return;
-    void lookupByCode(code);
+    if (!ready) return;
+    if (!code) {
+      setLookupDone(true);
+      return;
+    }
+    let cancelled = false;
+    setLookupDone(false);
+    void Promise.resolve(lookupByCode(code)).finally(() => {
+      if (!cancelled) setLookupDone(true);
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, code]);
 
@@ -47,7 +59,7 @@ export default function FeedbackByCodePage() {
     setComment(appeal.feedback.comment || "");
   }, [appeal?.id, appeal?.feedback?.submittedAt]);
 
-  if (!ready) return <PageLoader label={t.common.loading} />;
+  if (!ready || !lookupDone) return <PageLoader label={t.common.loading} />;
 
   if (!appeal) {
     return (

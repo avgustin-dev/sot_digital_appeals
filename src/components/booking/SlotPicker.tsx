@@ -60,20 +60,30 @@ export function SlotPicker({
   const [remoteDates, setRemoteDates] = useState<string[] | null>(null);
   const [remoteSlots, setRemoteSlots] = useState<TimeSlot[] | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [datesError, setDatesError] = useState(false);
+  const [slotsError, setSlotsError] = useState(false);
 
   useEffect(() => {
     if (!useRemoteApi || !ready) {
       setRemoteDates(null);
+      setDatesError(false);
       return;
     }
     let cancelled = false;
+    setDatesError(false);
     backend.public
       .dates(target)
       .then((r) => {
-        if (!cancelled) setRemoteDates(r.dates);
+        if (!cancelled) {
+          setRemoteDates(r.dates);
+          setDatesError(false);
+        }
       })
       .catch(() => {
-        if (!cancelled) setRemoteDates([]);
+        if (!cancelled) {
+          setRemoteDates([]);
+          setDatesError(true);
+        }
       });
     return () => {
       cancelled = true;
@@ -84,17 +94,25 @@ export function SlotPicker({
     if (!useRemoteApi || !ready || !date) {
       setRemoteSlots(null);
       setSlotsLoading(false);
+      setSlotsError(false);
       return;
     }
     let cancelled = false;
     setSlotsLoading(true);
+    setSlotsError(false);
     backend.public
       .slots(date, target, excludeAppointmentId)
       .then((r) => {
-        if (!cancelled) setRemoteSlots(r.slots);
+        if (!cancelled) {
+          setRemoteSlots(r.slots);
+          setSlotsError(false);
+        }
       })
       .catch(() => {
-        if (!cancelled) setRemoteSlots([]);
+        if (!cancelled) {
+          setRemoteSlots([]);
+          setSlotsError(true);
+        }
       })
       .finally(() => {
         if (!cancelled) setSlotsLoading(false);
@@ -292,6 +310,12 @@ export function SlotPicker({
               <p className="border border-dashed border-court-line bg-court-mist px-4 py-8 text-center text-sm text-court-muted">
                 {isKy ? "Убакыт жүктөлүүдө…" : "Загрузка времени…"}
               </p>
+            ) : slotsError ? (
+              <p className="border border-rose-200 bg-rose-50 px-4 py-6 text-sm text-rose-900">
+                {isKy
+                  ? "Убакыт тизмесин жүктөө мүмкүн болгон жок. Бир аздан кийин кайталаңыз."
+                  : "Не удалось загрузить время приёма. Повторите попытку позже."}
+              </p>
             ) : slots.length === 0 ? (
               <p className="border border-court-line bg-court-mist px-4 py-6 text-sm text-court-ink">
                 {c.noSlots}
@@ -357,7 +381,14 @@ export function SlotPicker({
         </div>
       )}
 
-      {!availableSet.size && ready && datesReady && (
+      {datesError && (
+        <p className="border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900">
+          {isKy
+            ? "Календарь жүктөлгөн жок. Сервис убактылуу жеткиликсиз."
+            : "Календарь записи недоступен. Сервис временно не отвечает."}
+        </p>
+      )}
+      {!datesError && !availableSet.size && ready && datesReady && (
         <p className="border border-court-line bg-court-mist px-3 py-2 text-sm text-court-ink">
           {c.noDates}
         </p>

@@ -7,6 +7,7 @@ import { useStore } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import { EmblemKR } from "@/components/brand/Emblem";
 import { LangSwitch } from "@/components/ui/LangSwitch";
+import { PageLoader } from "@/components/ui/PageLoader";
 import { env, useRemoteApi } from "@/config/env";
 import { backend } from "@/api/client";
 import { ApiError } from "@/api/http";
@@ -14,7 +15,7 @@ import { setAccessToken } from "@/api/session";
 import { staffHomePath } from "@/lib/staff";
 
 export default function AdminLoginPage() {
-  const { login, hydrateStaffSession, currentUser, ready, state } = useStore();
+  const { login, hydrateStaffSession, currentUser, ready, sessionReady, state } = useStore();
   const router = useRouter();
   const { t, lang } = useI18n();
   const isKy = lang === "ky";
@@ -24,10 +25,10 @@ export default function AdminLoginPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!ready || !currentUser) return;
+    if (!ready || !sessionReady || !currentUser) return;
     const pending = state.appointments.some((a) => a.status === "pending_review");
     router.replace(staffHomePath(currentUser, pending));
-  }, [ready, currentUser, router, state.appointments]);
+  }, [ready, sessionReady, currentUser, router, state.appointments]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -86,6 +87,11 @@ export default function AdminLoginPage() {
       </header>
 
       <div className="flex flex-1 items-center justify-center px-4 py-10">
+        {!ready || !sessionReady ? (
+          <PageLoader
+            label={isKy ? "Сессия текшерилуудө…" : "Проверка сессии…"}
+          />
+        ) : (
         <div className="w-full max-w-md">
           <h1 className="text-xl font-semibold text-slate-900">
             {isKy ? "Кызматтык кабинет" : "Служебный кабинет"}
@@ -154,6 +160,7 @@ export default function AdminLoginPage() {
             </Link>
           </div>
         </div>
+        )}
       </div>
     </div>
   );

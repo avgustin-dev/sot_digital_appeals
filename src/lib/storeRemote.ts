@@ -5,8 +5,10 @@ import type {
   AppealCard,
   Appointment,
   PublicAppointment,
+  PublicAppointmentLookup,
 } from "@/api/dto";
 import type { StaffProfile } from "./staff";
+import { mergeServiceContent } from "./serviceContent";
 
 type BookInput = {
   fullName: string;
@@ -42,7 +44,57 @@ export function withPin(
   };
 }
 
-type StoreSlice = {
+/** Публичный lookup не содержит поручение/протокол — не затираем карточку кабинета. */
+function applyPublicLookup(
+  store: StoreSlice,
+  data: PublicAppointmentLookup,
+  pin = ""
+): { appointment: Appointment; appeal: AppealCard } {
+  const apt = withPin(data.appointment, pin);
+  store.upsertAppointment(apt);
+  const existing = store.getAppealByCode(apt.code);
+  const appeal: AppealCard = {
+    id: existing?.id ?? apt.id,
+    appointmentId: existing?.appointmentId ?? apt.id,
+    code: apt.code,
+    stage: data.appealStage || existing?.stage || "registered",
+    fullName: apt.fullName,
+    phone: apt.phone,
+    email: apt.email,
+    topic: apt.topic,
+    category: apt.category,
+    summary: existing?.summary || apt.topic,
+    previousAppealIds: existing?.previousAppealIds ?? [],
+    previousNotes: existing?.previousNotes ?? "",
+    prepNotes: existing?.prepNotes ?? "",
+    prepCompletedBy: existing?.prepCompletedBy,
+    prepCompletedAt: existing?.prepCompletedAt,
+    receptionProtocol: existing?.receptionProtocol,
+    assignment: existing?.assignment,
+    controlLog: existing?.controlLog ?? [],
+    finalAnswer: existing?.finalAnswer,
+    finalAnswerAt: existing?.finalAnswerAt,
+    createdAt: existing?.createdAt ?? apt.createdAt,
+    updatedAt: apt.updatedAt,
+    feedback: data.feedback ?? existing?.feedback,
+    notifications: data.latestNotification
+      ? [
+          {
+            id: existing?.notifications?.[0]?.id ?? "n-latest",
+            at: apt.updatedAt,
+            channel: apt.email ? "email" : "system",
+            title: data.latestNotification.title,
+            body: data.latestNotification.body,
+            read: true,
+          },
+        ]
+      : existing?.notifications ?? [],
+  };
+  store.upsertAppeal(appeal);
+  return { appointment: apt, appeal };
+}
+
+interface StoreSlice {
   upsertAppointment: (apt: Appointment) => void;
   upsertAppeal: (apl: AppealCard) => void;
   replaceStaffLists: (payload: {
@@ -162,6 +214,7 @@ type StoreSlice = {
   updateServiceContent: (
     patch: Partial<import("./types").ServiceContent>
   ) => void;
+  resetServiceContent: () => void;
   setEligibilityTree: (tree: import("./types").EligibilityTreeNode[]) => void;
   patchEligibilityNode: (
     id: string,
@@ -233,6 +286,12 @@ export function wrapRemote(
         const apt = await backend.public.unlock(code, { pin });
         const local = withPin(apt, pin);
         store.upsertAppointment(local);
+        try {
+          const data = await backend.public.lookup(code);
+          applyPublicLookup(store, data, pin);
+        } catch {
+          /* карточка обращения — отдельно; запись уже открыта */
+        }
         return local;
       } catch {
         return null;
@@ -243,41 +302,7 @@ export function wrapRemote(
       if (!useRemoteApi) return store.lookupByCode(code);
       try {
         const data = await backend.public.lookup(code);
-        const apt = withPin(data.appointment);
-        store.upsertAppointment(apt);
-        const stub: AppealCard = {
-            id: apt.id,
-            appointmentId: apt.id,
-            code: apt.code,
-            stage: data.appealStage || "registered",
-            fullName: apt.fullName,
-            phone: apt.phone,
-            email: apt.email,
-            topic: apt.topic,
-            category: apt.category,
-            summary: apt.topic,
-            previousAppealIds: [],
-            previousNotes: "",
-            prepNotes: "",
-            createdAt: apt.createdAt,
-            updatedAt: apt.updatedAt,
-            feedback: data.feedback,
-            notifications: data.latestNotification
-              ? [
-                  {
-                    id: "n-latest",
-                    at: apt.updatedAt,
-                    channel: apt.email ? "email" : "system",
-                    title: data.latestNotification.title,
-                    body: data.latestNotification.body,
-                    read: true,
-                  },
-                ]
-              : [],
-            controlLog: [],
-          };
-          store.upsertAppeal(stub);
-          return { appointment: apt, appeal: stub };
+        return applyPublicLookup(store, data);
       } catch {
         return null;
       }
@@ -335,6 +360,22 @@ export function wrapRemote(
       if (!useRemoteApi) return store.submitFeedback(code, feedback);
       try {
         await backend.public.feedback(code, feedback);
+        const submitted = {
+          ...feedback,
+          submittedAt: new Date().toISOString(),
+        };
+        const existing = store.getAppealByCode(code);
+        if (existing) {
+          store.upsertAppeal({ ...existing, feedback: submitted });
+        } else {
+          try {
+            const data = await backend.public.lookup(code);
+            const { appeal } = applyPublicLookup(store, data);
+            store.upsertAppeal({ ...appeal, feedback: submitted });
+          } catch {
+            /* оценка на сервере есть, локальная карточка подтянется при следующем lookup */
+          }
+        }
         return { ok: true as const };
       } catch (e) {
         return fail(e);
@@ -638,6 +679,21 @@ export function wrapRemote(
           patch as import("./types").ServiceContent
         );
         store.updateServiceContent(saved ?? patch);
+        return { ok: true as const };
+      } catch (e) {
+        return fail(e);
+      }
+    },
+
+    resetServiceContent: async () => {
+      const factory = mergeServiceContent();
+      if (!useRemoteApi) {
+        store.resetServiceContent();
+        return { ok: true as const };
+      }
+      try {
+        const saved = await backend.staff.putContent(factory);
+        store.updateServiceContent(saved ?? factory);
         return { ok: true as const };
       } catch (e) {
         return fail(e);

@@ -1,13 +1,107 @@
-import { catalog, cloneCatalog } from "./catalog";
 import { canonicalPublicHref } from "./routes";
 import {
   leadershipDayWindows,
   withLeadershipSchedule,
 } from "./leadershipSchedule";
-import type { LeadershipPerson, ServiceContent } from "./types";
+import type {
+  BookingRulesContent,
+  CourtContactsContent,
+  LeadershipPerson,
+  ServiceContent,
+} from "./types";
 
+const EMPTY_CONTACTS: CourtContactsContent = {
+  trustPhone: "",
+  trustPhoneTel: "",
+  addressRu: "",
+  addressKy: "",
+  receptionOfficeRu: "",
+  receptionOfficeKy: "",
+  sourceNoteRu: "",
+  sourceNoteKy: "",
+  scheduleFootnoteRu: "",
+  scheduleFootnoteKy: "",
+};
+
+const EMPTY_RULES: BookingRulesContent = {
+  titleRu: "",
+  titleKy: "",
+  welcomeRu: "",
+  welcomeKy: "",
+  rulesRu: [],
+  rulesKy: [],
+  cannotTitleRu: "",
+  cannotTitleKy: "",
+  cannotRu: [],
+  cannotKy: [],
+  deleteNoteRu: "",
+  deleteNoteKy: "",
+  agreeRu: "",
+  agreeKy: "",
+};
+
+/** Пустой CMS: ничего не подставляем из шаблонов. */
 export function defaultServiceContent(): ServiceContent {
-  return cloneCatalog(catalog.site);
+  return {
+    orgNameRu: "",
+    orgNameKy: "",
+    appNameRu: "",
+    appNameKy: "",
+    navBookCtaRu: "",
+    navBookCtaKy: "",
+    headerNav: [],
+    hubNav: [],
+    footerReceptionRu: "",
+    footerReceptionKy: "",
+    footerDisclaimerRu: "",
+    footerDisclaimerKy: "",
+    footerIndependenceRu: "",
+    footerIndependenceKy: "",
+    footerNoCasesRu: "",
+    footerNoCasesKy: "",
+    footerCitizensRu: "",
+    footerCitizensKy: "",
+    footerHelpRu: "",
+    footerHelpKy: "",
+    footerImportantRu: "",
+    footerImportantKy: "",
+    hubKickerRu: "",
+    hubKickerKy: "",
+    hubTitleRu: "",
+    hubTitleKy: "",
+    hubLeadRu: "",
+    hubLeadKy: "",
+    hubCtaRu: "",
+    hubCtaKy: "",
+    memoTitleRu: "",
+    memoTitleKy: "",
+    memoItemsRu: [],
+    memoItemsKy: [],
+    allowedTitleRu: "",
+    allowedTitleKy: "",
+    forbiddenTitleRu: "",
+    forbiddenTitleKy: "",
+    allowedRu: [],
+    allowedKy: [],
+    forbiddenRu: [],
+    forbiddenKy: [],
+    cycleTitleRu: "",
+    cycleTitleKy: "",
+    cycleLeadRu: "",
+    cycleLeadKy: "",
+    bookTitleRu: "",
+    bookTitleKy: "",
+    bookSubtitleRu: "",
+    bookSubtitleKy: "",
+    bookTargetHintRu: "",
+    bookTargetHintKy: "",
+    contacts: { ...EMPTY_CONTACTS },
+    leadership: [],
+    processNoticeRu: "",
+    processNoticeKy: "",
+    processSteps: [],
+    rules: { ...EMPTY_RULES, rulesRu: [], rulesKy: [], cannotRu: [], cannotKy: [] },
+  };
 }
 
 function normalizeNav<T extends { href: string }>(items: T[]): T[] {
@@ -21,7 +115,6 @@ type LegacyFooter = {
   footerDemoKy?: string;
 };
 
-/** Шаблон только если поля нет (undefined). Пустая строка из админки сохраняется. */
 function filled<T>(value: T | undefined | null, fallback: T): T {
   return value === undefined || value === null ? fallback : value;
 }
@@ -56,8 +149,7 @@ function normalizeLeadershipPerson(
 
 /**
  * CMS / bootstrap — источник истины.
- * JSON из content/ заполняет только отсутствующие ключи (старый бэк, первый кадр).
- * Не подставляет шаблон поверх пустых строк и не копирует ФИО из site.json.
+ * Пустые строки и пустые списки из админки не заполняются шаблоном.
  */
 export function mergeServiceContent(
   partial?: Partial<ServiceContent> | null

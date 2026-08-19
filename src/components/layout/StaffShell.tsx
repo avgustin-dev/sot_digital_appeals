@@ -12,9 +12,7 @@ import {
   LogOut,
   Menu,
   X,
-  ClipboardList,
   FilePenLine,
-  ChartColumn,
   ExternalLink,
   GitBranch,
   BookOpen,
@@ -39,7 +37,7 @@ type NavItem = {
 };
 
 export function StaffShell({ children }: { children: React.ReactNode }) {
-  const { currentUser, logout, ready, setAdminModule, state } = useStore();
+  const { currentUser, logout, ready, sessionReady, setAdminModule, state } = useStore();
   const { lang } = useI18n();
   const isKy = lang === "ky";
   const pathname = usePathname();
@@ -140,30 +138,13 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
     return items;
   }, [isKy, canAnalytics, canSettings]);
 
-  const surveyNav: NavItem[] = useMemo(
-    () => [
-      {
-        href: "/admin/survey",
-        label: isKy ? "Суроолор" : "Вопросы",
-        icon: ClipboardList,
-        exact: true,
-      },
-      {
-        href: "/admin/survey/results",
-        label: isKy ? "Жыйынтыктар" : "Результаты",
-        icon: ChartColumn,
-      },
-    ],
-    [isKy]
-  );
-
   useEffect(() => {
-    if (ready && !currentUser && pathname !== "/admin/login") {
+    if (ready && sessionReady && !currentUser && pathname !== "/admin/login") {
       router.replace("/admin/login");
     }
-  }, [ready, currentUser, pathname, router]);
+  }, [ready, sessionReady, currentUser, pathname, router]);
 
-  if (!ready) {
+  if (!ready || !sessionReady) {
     return (
       <div className="min-h-screen bg-[#f0f2f5]">
         <PageLoader
@@ -322,29 +303,18 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
         )}
 
         <nav className="flex-1 space-y-4 overflow-y-auto p-2">
-          {survey ? (
-            <div>
-              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                {isKy ? "Сурамжылоо" : "Опросник"}
-              </div>
-              <div className="space-y-0.5">{renderNav(surveyNav)}</div>
+          <div>
+            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              {isKy ? "Жарандарды кабыл алуу" : "Приём граждан"}
             </div>
-          ) : (
-            <>
-              <div>
-                <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  {isKy ? "Жарандарды кабыл алуу" : "Приём граждан"}
-                </div>
-                <div className="space-y-0.5">{renderNav(nav)}</div>
-              </div>
-              <div>
-                <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
-                  {isKy ? "Маалымдама" : "Справочник"}
-                </div>
-                <div className="space-y-0.5">{renderNav(refNav)}</div>
-              </div>
-            </>
-          )}
+            <div className="space-y-0.5">{renderNav(nav)}</div>
+          </div>
+          <div>
+            <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+              {isKy ? "Маалымдама" : "Справочник"}
+            </div>
+            <div className="space-y-0.5">{renderNav(refNav)}</div>
+          </div>
         </nav>
 
         <div className="shrink-0 border-t border-slate-100 p-3">
@@ -414,28 +384,15 @@ export function StaffShell({ children }: { children: React.ReactNode }) {
             )}
             <LangSwitch />
             <Link
-              href={survey ? "/survey" : "/"}
+              href="/"
               className="hidden items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 sm:inline-flex"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              {survey
-                ? isKy
-                  ? "Анкета"
-                  : "Анкета"
-                : isKy
-                  ? "Коомдук бөлүм"
-                  : "Публичный раздел"}
+              {isKy ? "Коомдук бөлүм" : "Публичный раздел"}
             </Link>
           </div>
         </header>
         <main className="admin-page-enter flex-1 p-3 sm:p-5 lg:p-7">
-          {survey && (
-            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-              {isKy
-                ? "Модуль «Опросник судов» иштелип жатат. Анкетанын толук иштеши кийинчерээк кошулат."
-                : "Модуль «Опросник судов» в разработке. Полноценная работа анкеты будет подключена отдельно."}
-            </div>
-          )}
           {children}
         </main>
       </div>

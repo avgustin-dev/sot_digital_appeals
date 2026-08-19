@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { COURT_CONTACTS } from "@/lib/constants";
 import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
 import { useStore } from "@/lib/store";
 import { formatDateRu } from "@/lib/slots";
@@ -172,8 +171,8 @@ export function VisitTicket({
         <ul className="mt-1.5 list-disc space-y-0.5 pl-4">
           <li>
             {isKy
-              ? `${contacts.receptionOfficeKy || COURT_CONTACTS.receptionOfficeKy}. Паспорт керек.`
-              : `${contacts.receptionOfficeRu || COURT_CONTACTS.receptionOfficeRu}. При себе — документ, удостоверяющий личность.`}
+              ? `${contacts.receptionOfficeKy ? `${contacts.receptionOfficeKy}. ` : ""}Паспорт керек.`
+              : `${contacts.receptionOfficeRu ? `${contacts.receptionOfficeRu}. ` : ""}При себе — документ, удостоверяющий личность.`}
           </li>
           <li>
             {isKy

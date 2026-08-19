@@ -278,8 +278,8 @@ export default function EligibilityCmsPage() {
     if (
       !window.confirm(
         isKy
-          ? "Даракты баштапкы үлгүгө кайтаруу?"
-          : "Сбросить дерево к заводскому шаблону?"
+          ? "Даракты тазалоо? Кайра админкадан толтурасыз."
+          : "Очистить дерево допуска? Заполните заново в админке."
       )
     ) {
       return;
@@ -287,7 +287,7 @@ export default function EligibilityCmsPage() {
     resetEligibilityTree();
     setSelectedId(null);
     setDraft(null);
-    setMsg(isKy ? "Дарак калыбына келтирилди." : "Дерево восстановлено.");
+    setMsg(isKy ? "Дарак тазаланды." : "Дерево очищено.");
   }
 
   const visibleRows = rows.filter((row) => {

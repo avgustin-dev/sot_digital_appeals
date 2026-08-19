@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { SlotPicker } from "@/components/booking/SlotPicker";
 import { VisitTicket } from "@/components/booking/VisitTicket";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -39,7 +38,6 @@ export default function MyAppointmentPage() {
   } = useStore();
   const { t, lang } = useI18n();
   const isKy = lang === "ky";
-  const router = useRouter();
 
   const [code, setCode] = useState("");
   const [pin, setPin] = useState("");
@@ -77,26 +75,14 @@ export default function MyAppointmentPage() {
       )
     : undefined;
 
-  useEffect(() => {
-    if (!ready || !apt) return;
-    const visitDone =
-      apt.status === "completed" ||
-      (appeal &&
-        ["answered", "closed", "reception_done", "in_control"].includes(
-          appeal.stage
-        ));
-    if (!visitDone) return;
-    if (appeal?.feedback) return;
-    router.replace(routes.evaluationByCode(apt.code));
-  }, [
-    ready,
-    apt,
-    apt?.status,
-    apt?.code,
-    appeal?.stage,
-    appeal?.feedback,
-    router,
-  ]);
+  const visitDone = Boolean(
+    apt &&
+      (apt.status === "completed" ||
+        (appeal &&
+          ["answered", "closed", "reception_done", "in_control"].includes(
+            appeal.stage
+          )))
+  );
 
   if (!ready) {
     return <PageLoader label={t.common.loading} />;
@@ -394,6 +380,21 @@ export default function MyAppointmentPage() {
                     ? "Өтүнмө ырасталган жок."
                     : "В записи отказано."}
                   {apt.reviewNote ? ` ${apt.reviewNote}` : ""}
+                </div>
+              )}
+              {visitDone && !appeal?.feedback && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+                  <p>
+                    {isKy
+                      ? "Кабыл алуу аяктады. Сураныч, сервисти баалаңыз — талон төмөндө сакталат."
+                      : "Приём завершён. Вы можете оценить сервис; талон записи остаётся на этой странице."}
+                  </p>
+                  <Link
+                    href={routes.evaluationByCode(apt.code)}
+                    className="mt-2 inline-flex font-medium text-court-blue hover:underline"
+                  >
+                    {isKy ? "Сервисти баалоо →" : "Оценить сервис →"}
+                  </Link>
                 </div>
               )}
               <VisitTicket
