@@ -12,6 +12,25 @@ export type TargetWindow =
   | { kind: "calendar" };
 
 export const TARGET_WINDOWS: Record<string, TargetWindow> = {
+  chairman: {
+    kind: "fixed",
+    weekdays: [4],
+    startMinutes: 9 * 60,
+    endMinutes: 12 * 60,
+  },
+  deputy_bakirova: {
+    kind: "fixed",
+    weekdays: [2],
+    startMinutes: 15 * 60,
+    endMinutes: 16 * 60,
+  },
+  deputy_kamchybekov: {
+    kind: "fixed",
+    weekdays: [4],
+    startMinutes: 9 * 60,
+    endMinutes: 10 * 60,
+  },
+  deputy_other: { kind: "calendar" },
   reception: { kind: "calendar" },
 };
 

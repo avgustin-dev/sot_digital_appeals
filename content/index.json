@@ -1,0 +1,14 @@
+{
+  "note": "Статичные тексты фронта. Бэкенд может отдать те же JSON как GET /public/content.",
+  "files": [
+    "site.json",
+    "ui.ru.json",
+    "ui.ky.json",
+    "booking-rules.json",
+    "eligibility-tree.json",
+    "survey.json",
+    "calendar-rules.json",
+    "shell.json",
+    "dictionaries.json"
+  ]
+}

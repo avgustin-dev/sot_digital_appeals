@@ -1,10 +1,8 @@
-# Цифровая платформа приёма граждан
+# Цифровая платформа приёма граждан (демо)
 
-Фронт: Next.js. Это **основной репозиторий под бэкенд**. CMS на фронте пустой: тексты сайта, руководство и дерево допуска приходят из API.
+Этот репозиторий — **учебный контур без бэкенда**: шаблоны `content/` и тестовые записи. На Vercel работает без API.
 
-Контракт: `docs/backend/ENDPOINTS.md`, `docs/backend/openapi.yaml`. Клиент: `src/api/client.ts`. Пример сида для бэка: `docs/backend/seed/`.
-
-Демо без API (шаблоны `content/` + учебные данные, Vercel): [sot_digital_appeals](https://github.com/avgustin-dev/sot_digital_appeals).
+Основной фронт под бэкенд: [sot-priem-front](https://github.com/avgustin-dev/sot-priem-front).
 
 ## Запуск
 
@@ -16,17 +14,23 @@ npm run dev
 
 http://localhost:3000 · служебный кабинет: http://localhost:3000/admin
 
-## Подключение бэкенда
+В `.env.local` **не** задавайте `NEXT_PUBLIC_API_URL`. Для Vercel уже есть `.env.production` с `NEXT_PUBLIC_DEMO=true`. В настройках проекта Vercel поле API URL оставьте пустым.
 
-В `.env.local`:
+## Учебный вход
 
-```
-NEXT_PUBLIC_API_URL=https://host/api/v1
-```
+| Логин | Пароль | Роль |
+| --- | --- | --- |
+| `admin` | `admin123` | администратор |
+| `priemnaya` | `priem123` | общественная приёмная |
+| `rukovodstvo` | `sud2026` | руководство |
+| `predsedatel` | `vs2026` | председатель |
+| `otvet1` / `otvet2` | `otvet123` | ответственный |
 
-Без URL кабинет в production не заполняется учебными учётками. Оболочка интерфейса (кнопки RU/KY) — `src/locales/`.
+Тестовые записи: `VS-2026-1001` (PIN `4821`), `VS-2026-1002` (PIN `7390`), заявка на проверке `VS-2026-1003` (PIN `5502`).
 
-Публичные адреса для писем и талона: `/electronic-appointment`, `/appointment-status`, `/service-evaluation/{code}`.
+Тексты сайта правятся в `content/` (их же читает `src/lib/catalog.ts`).
+
+Публичные адреса: `/electronic-appointment`, `/appointment-status`, `/service-evaluation/{code}`.
 
 ## Стек
 

@@ -1,3 +1,5 @@
+import { LEADERSHIP_RECEPTION_SCHEDULE } from "./constants";
+import { catalog } from "./catalog";
 import type { AppealCard, Appointment, CalendarSettings, StaffUser } from "./types";
 
 export const DEFAULT_CALENDAR: CalendarSettings = {
@@ -9,17 +11,19 @@ export const DEFAULT_CALENDAR: CalendarSettings = {
   bookingHorizonDays: 45,
   closedDates: [],
   extraOpenDates: [],
-  rulesText: "",
+  rulesText: catalog.calendarRules.rulesText,
 };
+
+const chairman = LEADERSHIP_RECEPTION_SCHEDULE[0];
 
 export const SEED_STAFF: StaffUser[] = [
   {
     id: "u-chairman",
     login: "predsedatel",
     password: "vs2026",
-    fullName: "Председатель",
+    fullName: chairman.fullNameRu,
     role: "leadership",
-    position: "Председатель",
+    position: chairman.positionRu,
     department: "Верховный суд Кыргызской Республики",
   },
   {

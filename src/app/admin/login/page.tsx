@@ -159,6 +159,13 @@ export default function AdminLoginPage() {
               ← {isKy ? "Коомдук бөлүм" : "Публичный раздел"}
             </Link>
           </div>
+          {env.demo && !useRemoteApi && (
+            <p className="mt-6 text-center text-xs leading-relaxed text-slate-500">
+              {isKy
+                ? "Окуу контуру: admin / admin123"
+                : "Учебный контур: admin / admin123"}
+            </p>
+          )}
         </div>
         )}
       </div>

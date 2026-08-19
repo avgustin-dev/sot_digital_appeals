@@ -1,107 +1,14 @@
+import { catalog, cloneCatalog } from "./catalog";
 import { canonicalPublicHref } from "./routes";
 import {
   leadershipDayWindows,
   withLeadershipSchedule,
 } from "./leadershipSchedule";
-import type {
-  BookingRulesContent,
-  CourtContactsContent,
-  LeadershipPerson,
-  ServiceContent,
-} from "./types";
+import type { LeadershipPerson, ServiceContent } from "./types";
 
-const EMPTY_CONTACTS: CourtContactsContent = {
-  trustPhone: "",
-  trustPhoneTel: "",
-  addressRu: "",
-  addressKy: "",
-  receptionOfficeRu: "",
-  receptionOfficeKy: "",
-  sourceNoteRu: "",
-  sourceNoteKy: "",
-  scheduleFootnoteRu: "",
-  scheduleFootnoteKy: "",
-};
-
-const EMPTY_RULES: BookingRulesContent = {
-  titleRu: "",
-  titleKy: "",
-  welcomeRu: "",
-  welcomeKy: "",
-  rulesRu: [],
-  rulesKy: [],
-  cannotTitleRu: "",
-  cannotTitleKy: "",
-  cannotRu: [],
-  cannotKy: [],
-  deleteNoteRu: "",
-  deleteNoteKy: "",
-  agreeRu: "",
-  agreeKy: "",
-};
-
-/** Пустой CMS: ничего не подставляем из шаблонов. */
+/** Демо: тексты сайта из content/site.json. */
 export function defaultServiceContent(): ServiceContent {
-  return {
-    orgNameRu: "",
-    orgNameKy: "",
-    appNameRu: "",
-    appNameKy: "",
-    navBookCtaRu: "",
-    navBookCtaKy: "",
-    headerNav: [],
-    hubNav: [],
-    footerReceptionRu: "",
-    footerReceptionKy: "",
-    footerDisclaimerRu: "",
-    footerDisclaimerKy: "",
-    footerIndependenceRu: "",
-    footerIndependenceKy: "",
-    footerNoCasesRu: "",
-    footerNoCasesKy: "",
-    footerCitizensRu: "",
-    footerCitizensKy: "",
-    footerHelpRu: "",
-    footerHelpKy: "",
-    footerImportantRu: "",
-    footerImportantKy: "",
-    hubKickerRu: "",
-    hubKickerKy: "",
-    hubTitleRu: "",
-    hubTitleKy: "",
-    hubLeadRu: "",
-    hubLeadKy: "",
-    hubCtaRu: "",
-    hubCtaKy: "",
-    memoTitleRu: "",
-    memoTitleKy: "",
-    memoItemsRu: [],
-    memoItemsKy: [],
-    allowedTitleRu: "",
-    allowedTitleKy: "",
-    forbiddenTitleRu: "",
-    forbiddenTitleKy: "",
-    allowedRu: [],
-    allowedKy: [],
-    forbiddenRu: [],
-    forbiddenKy: [],
-    cycleTitleRu: "",
-    cycleTitleKy: "",
-    cycleLeadRu: "",
-    cycleLeadKy: "",
-    bookTitleRu: "",
-    bookTitleKy: "",
-    bookSubtitleRu: "",
-    bookSubtitleKy: "",
-    bookTargetHintRu: "",
-    bookTargetHintKy: "",
-    contacts: { ...EMPTY_CONTACTS },
-    leadership: [],
-    processNoticeRu: "",
-    processNoticeKy: "",
-    processSteps: [],
-    rules: { ...EMPTY_RULES, rulesRu: [], rulesKy: [], cannotRu: [], cannotKy: [] },
-  };
+  return cloneCatalog(catalog.site);
 }
 
 function normalizeNav<T extends { href: string }>(items: T[]): T[] {

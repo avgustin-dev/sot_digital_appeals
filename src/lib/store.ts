@@ -51,8 +51,8 @@ import { backend } from "@/api/client";
 import { env, useRemoteApi } from "@/config/env";
 import { wrapRemote, withPin } from "./storeRemote";
 
-export const STORAGE_KEY = "vs-kr-citizen-platform-v9";
-const STATE_VERSION = 9;
+export const STORAGE_KEY = "vs-kr-citizen-platform-demo-v1";
+const STATE_VERSION = 10;
 
 function seedEligibilityTree(): EligibilityTreeNode[] {
   return cloneEligibilityTree() as EligibilityTreeNode[];

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Roboto } from "next/font/google";
+import { catalog } from "@/lib/catalog";
 import { LanguageProvider } from "@/lib/i18n";
 import "./globals.css";
 
@@ -10,12 +11,14 @@ const roboto = Roboto({
   display: "swap",
 });
 
+const site = catalog.site;
+
 export const metadata: Metadata = {
   title: {
-    default: "Приём граждан",
-    template: "%s",
+    default: `${site.appNameKy} — ${site.orgNameKy}`,
+    template: `%s · ${site.orgNameKy}`,
   },
-  description: "Электронная запись на личный приём",
+  description: site.hubLeadKy,
 };
 
 export default function RootLayout({

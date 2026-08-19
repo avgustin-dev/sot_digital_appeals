@@ -1,5 +1,5 @@
 import type { AppealCategory, BookingRulesContent } from "./types";
-import { cloneCatalog } from "./catalog";
+import { catalog, cloneCatalog } from "./catalog";
 
 export type RefusalMessage = {
   greetingRu: string;
@@ -22,24 +22,9 @@ export type EligibilityNode = {
   refusal?: RefusalMessage;
 };
 
-export const ELIGIBILITY_TREE: EligibilityNode[] = [];
+export const ELIGIBILITY_TREE: EligibilityNode[] = catalog.eligibilityTree;
 
-export const BOOKING_RULES: BookingRulesContent = {
-  titleRu: "",
-  titleKy: "",
-  welcomeRu: "",
-  welcomeKy: "",
-  rulesRu: [],
-  rulesKy: [],
-  cannotTitleRu: "",
-  cannotTitleKy: "",
-  cannotRu: [],
-  cannotKy: [],
-  deleteNoteRu: "",
-  deleteNoteKy: "",
-  agreeRu: "",
-  agreeKy: "",
-};
+export const BOOKING_RULES: BookingRulesContent = catalog.bookingRules;
 
 export const DEFAULT_REFUSAL: RefusalMessage = {
   greetingRu: "Уважаемый пользователь!",
