@@ -1,5 +1,7 @@
 import { mergeServiceContent } from "./serviceContent";
+import { leadershipDayWindows } from "./leadershipSchedule";
 import type { CalendarSettings, LeadershipPerson, ServiceContent } from "./types";
+import { getDay, parseISO } from "date-fns";
 
 /**
  * Окно приёма конкретного лица (график sot.kg).
@@ -50,12 +52,13 @@ export function resolveTargetWindow(
         endMinutes: calendar.dayEndMinutes,
       };
     }
+    const windows = leadershipDayWindows(person);
     return {
-      weekdays: person.weekdays?.length
-        ? person.weekdays
+      weekdays: windows.length
+        ? windows.map((w) => w.weekday)
         : calendar.receptionWeekdays,
-      startMinutes: person.startMinutes ?? calendar.dayStartMinutes,
-      endMinutes: person.endMinutes ?? calendar.dayEndMinutes,
+      startMinutes: windows[0]?.startMinutes ?? calendar.dayStartMinutes,
+      endMinutes: windows[0]?.endMinutes ?? calendar.dayEndMinutes,
     };
   }
   const w = TARGET_WINDOWS[targetId] ?? { kind: "calendar" as const };
@@ -70,6 +73,26 @@ export function resolveTargetWindow(
     weekdays: w.weekdays,
     startMinutes: w.startMinutes,
     endMinutes: w.endMinutes,
+  };
+}
+
+/** Окно слотов на конкретную дату (у личного графика время может отличаться по дням). */
+export function resolveTargetWindowForDate(
+  targetId: string,
+  dateStr: string,
+  calendar: CalendarSettings,
+  sc?: ServiceContent | null
+): { weekdays: number[]; startMinutes: number; endMinutes: number } {
+  const base = resolveTargetWindow(targetId, calendar, sc);
+  const person = peopleOf(sc).find((p) => p.id === targetId);
+  if (!person || person.windowKind === "calendar" || !dateStr) return base;
+  const dow = getDay(parseISO(dateStr));
+  const hit = leadershipDayWindows(person).find((w) => w.weekday === dow);
+  if (!hit) return base;
+  return {
+    weekdays: base.weekdays,
+    startMinutes: hit.startMinutes,
+    endMinutes: hit.endMinutes,
   };
 }
 

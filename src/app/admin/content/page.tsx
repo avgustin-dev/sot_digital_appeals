@@ -5,11 +5,21 @@ import Link from "next/link";
 import { ExternalLink, Plus, RotateCcw, Save, Trash2 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { mergeServiceContent } from "@/lib/serviceContent";
-import type { LeadershipPerson, ServiceContent } from "@/lib/types";
+import type {
+  LeadershipDayWindow,
+  LeadershipPerson,
+  ServiceContent,
+} from "@/lib/types";
 import { useI18n } from "@/lib/i18n";
 import { PageLoader } from "@/components/ui/PageLoader";
-import { generateId } from "@/lib/utils";
+import { cn, generateId } from "@/lib/utils";
 import { minutesToTime, timeToMinutes } from "@/lib/slots";
+import {
+  leadershipDayWindows,
+  leadershipScheduleLabels,
+  withLeadershipSchedule,
+  withScheduleLabels,
+} from "@/lib/leadershipSchedule";
 
 function linesToArray(s: string): string[] {
   return s
@@ -23,13 +33,13 @@ function arrayToLines(arr: string[] | undefined): string {
 }
 
 const WEEKDAYS = [
-  { id: 1, ru: "Пн" },
-  { id: 2, ru: "Вт" },
-  { id: 3, ru: "Ср" },
-  { id: 4, ru: "Чт" },
-  { id: 5, ru: "Пт" },
-  { id: 6, ru: "Сб" },
-  { id: 0, ru: "Вс" },
+  { id: 1, ru: "Пн", ky: "Дүй" },
+  { id: 2, ru: "Вт", ky: "Шей" },
+  { id: 3, ru: "Ср", ky: "Шар" },
+  { id: 4, ru: "Чт", ky: "Бей" },
+  { id: 5, ru: "Пт", ky: "Жум" },
+  { id: 6, ru: "Сб", ky: "Ишм" },
+  { id: 0, ru: "Вс", ky: "Жек" },
 ];
 
 type Tab = "chrome" | "home" | "leadership" | "book" | "rules";
@@ -111,6 +121,10 @@ function emptyPerson(): LeadershipPerson {
     weekdays: [2, 4],
     startMinutes: 8 * 60,
     endMinutes: 12 * 60,
+    dayWindows: [
+      { weekday: 2, startMinutes: 8 * 60, endMinutes: 12 * 60 },
+      { weekday: 4, startMinutes: 8 * 60, endMinutes: 12 * 60 },
+    ],
   };
 }
 
@@ -142,6 +156,19 @@ export default function ContentCmsPage() {
     setMsg("");
   }
 
+  function setPersonWindows(index: number, next: LeadershipDayWindow[]) {
+    const cal = state.calendar;
+    setDraft((d) => ({
+      ...d,
+      leadership: d.leadership.map((x, j) =>
+        j === index
+          ? withScheduleLabels(withLeadershipSchedule(x, next), cal)
+          : x
+      ),
+    }));
+    setMsg("");
+  }
+
   async function onSave(e: React.FormEvent) {
     e.preventDefault();
     if (!canEdit) {
@@ -153,7 +180,12 @@ export default function ContentCmsPage() {
       );
       return;
     }
-    const saved = await updateServiceContent(draft);
+    const saved = await updateServiceContent({
+      ...draft,
+      leadership: draft.leadership.map((p) =>
+        withScheduleLabels(p, state.calendar)
+      ),
+    });
     if (saved && "ok" in saved && !saved.ok) {
       setErr(true);
       setMsg(saved.error);
@@ -666,50 +698,6 @@ export default function ContentCmsPage() {
                     disabled={!canEdit}
                   />
                   <Field
-                    label="День приёма — текст (RU)"
-                    value={p.weekdayRu}
-                    onChange={(v) => {
-                      const leadership = draft.leadership.map((x, j) =>
-                        j === i ? { ...x, weekdayRu: v } : x
-                      );
-                      patch({ leadership });
-                    }}
-                    disabled={!canEdit}
-                  />
-                  <Field
-                    label="Күн — текст (KY)"
-                    value={p.weekdayKy}
-                    onChange={(v) => {
-                      const leadership = draft.leadership.map((x, j) =>
-                        j === i ? { ...x, weekdayKy: v } : x
-                      );
-                      patch({ leadership });
-                    }}
-                    disabled={!canEdit}
-                  />
-                  <Field
-                    label="Время — текст (RU)"
-                    value={p.timeRu}
-                    onChange={(v) => {
-                      const leadership = draft.leadership.map((x, j) =>
-                        j === i ? { ...x, timeRu: v } : x
-                      );
-                      patch({ leadership });
-                    }}
-                    disabled={!canEdit}
-                  />
-                  <Field
-                    label="Убакыт — текст (KY)"
-                    value={p.timeKy}
-                    onChange={(v) => {
-                      const leadership = draft.leadership.map((x, j) =>
-                        j === i ? { ...x, timeKy: v } : x
-                      );
-                      patch({ leadership });
-                    }}
-                    disabled={!canEdit}
-                  />
-                  <Field
                     label="Кратко в талоне (RU)"
                     value={p.shortRu}
                     onChange={(v) => {
@@ -792,14 +780,13 @@ export default function ContentCmsPage() {
                       value={p.windowKind}
                       disabled={!canEdit}
                       onChange={(e) => {
+                        const kind = e.target.value as "fixed" | "calendar";
                         const leadership = draft.leadership.map((x, j) =>
                           j === i
-                            ? {
-                                ...x,
-                                windowKind: e.target.value as
-                                  | "fixed"
-                                  | "calendar",
-                              }
+                            ? withScheduleLabels(
+                                { ...x, windowKind: kind },
+                                state.calendar
+                              )
                             : x
                         );
                         patch({ leadership });
@@ -814,79 +801,164 @@ export default function ContentCmsPage() {
                     </select>
                   </label>
                 </div>
-                {p.windowKind === "fixed" && (
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <div className="mb-1 text-xs font-semibold text-slate-600">
-                        {isKy ? "Күндөр" : "Дни недели"}
+                {(() => {
+                  const labels = leadershipScheduleLabels(p, state.calendar);
+                  return (
+                    <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                      <div className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        {isKy
+                          ? "Сайттагы график кабыл алуудан"
+                          : "На сайте — из графика приёма"}
                       </div>
-                      <div className="flex flex-wrap gap-2">
-                        {WEEKDAYS.map((d) => (
+                      <div className="mt-0.5 font-medium">
+                        {isKy ? labels.weekdayKy : labels.weekdayRu}
+                      </div>
+                      <div className="tabular-nums text-slate-600">
+                        {isKy ? labels.timeKy : labels.timeRu}
+                      </div>
+                    </div>
+                  );
+                })()}
+                {p.windowKind === "calendar" && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {isKy
+                      ? "Күндөр жана убакыт — платформанын кабыл алуу графигинен (Жөндөөлөр → календарь)."
+                      : "Дни и время берутся из графика приёма платформы (Настройки → календарь)."}
+                  </p>
+                )}
+                {p.windowKind === "fixed" && (
+                  <div className="mt-3 space-y-2">
+                    <div className="text-xs font-semibold text-slate-600">
+                      {isKy ? "Күндөр" : "Дни приёма"}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {WEEKDAYS.map((d) => {
+                        const on = leadershipDayWindows(p).some(
+                          (w) => w.weekday === d.id
+                        );
+                        return (
                           <label
                             key={d.id}
-                            className="inline-flex items-center gap-1 text-sm"
+                            className={cn(
+                              "inline-flex cursor-pointer items-center rounded-md border px-2.5 py-1 text-sm font-medium",
+                              on
+                                ? "border-court-navy bg-court-navy text-white"
+                                : "border-slate-200 bg-white text-slate-600",
+                              !canEdit && "cursor-not-allowed opacity-60"
+                            )}
                           >
                             <input
                               type="checkbox"
+                              className="sr-only"
                               disabled={!canEdit}
-                              checked={p.weekdays.includes(d.id)}
+                              checked={on}
                               onChange={(e) => {
-                                const weekdays = e.target.checked
-                                  ? [...p.weekdays, d.id]
-                                  : p.weekdays.filter((x) => x !== d.id);
-                                const leadership = draft.leadership.map(
-                                  (x, j) => (j === i ? { ...x, weekdays } : x)
-                                );
-                                patch({ leadership });
+                                const current = leadershipDayWindows(p);
+                                const next = e.target.checked
+                                  ? [
+                                      ...current.filter(
+                                        (w) => w.weekday !== d.id
+                                      ),
+                                      {
+                                        weekday: d.id,
+                                        startMinutes:
+                                          state.calendar.dayStartMinutes,
+                                        endMinutes:
+                                          state.calendar.dayEndMinutes,
+                                      },
+                                    ]
+                                  : current.filter((w) => w.weekday !== d.id);
+                                setPersonWindows(i, next);
                               }}
                             />
-                            {d.ru}
+                            {isKy ? d.ky : d.ru}
                           </label>
-                        ))}
+                        );
+                      })}
+                    </div>
+                    <div
+                      className={cn(
+                        "grid transition-[grid-template-rows] duration-200 ease-out",
+                        leadershipDayWindows(p).length
+                          ? "grid-rows-[1fr]"
+                          : "grid-rows-[0fr]"
+                      )}
+                    >
+                      <div className="overflow-hidden">
+                        {leadershipDayWindows(p).length > 0 && (
+                          <div className="mt-1 divide-y divide-slate-200 overflow-hidden rounded-md border border-slate-200 bg-slate-50/80">
+                            {leadershipDayWindows(p).map((win) => {
+                              const day = WEEKDAYS.find(
+                                (d) => d.id === win.weekday
+                              );
+                              return (
+                                <div
+                                  key={win.weekday}
+                                  className="flex flex-wrap items-center gap-3 px-3 py-2"
+                                >
+                                  <span className="min-w-[2.5rem] text-sm font-semibold text-slate-800">
+                                    {isKy ? day?.ky : day?.ru}
+                                  </span>
+                                  <label className="text-xs text-slate-600">
+                                    {isKy ? "Башталышы" : "Начало"}
+                                    <input
+                                      type="time"
+                                      className="input mt-0.5 !w-[8.5rem] !py-1"
+                                      disabled={!canEdit}
+                                      value={minutesToTime(win.startMinutes)}
+                                      onChange={(e) => {
+                                        const next = leadershipDayWindows(p).map(
+                                          (w) =>
+                                            w.weekday === win.weekday
+                                              ? {
+                                                  ...w,
+                                                  startMinutes: timeToMinutes(
+                                                    e.target.value
+                                                  ),
+                                                }
+                                              : w
+                                        );
+                                        setPersonWindows(i, next);
+                                      }}
+                                    />
+                                  </label>
+                                  <label className="text-xs text-slate-600">
+                                    {isKy ? "Аягы" : "Окончание"}
+                                    <input
+                                      type="time"
+                                      className="input mt-0.5 !w-[8.5rem] !py-1"
+                                      disabled={!canEdit}
+                                      value={minutesToTime(win.endMinutes)}
+                                      onChange={(e) => {
+                                        const next = leadershipDayWindows(p).map(
+                                          (w) =>
+                                            w.weekday === win.weekday
+                                              ? {
+                                                  ...w,
+                                                  endMinutes: timeToMinutes(
+                                                    e.target.value
+                                                  ),
+                                                }
+                                              : w
+                                        );
+                                        setPersonWindows(i, next);
+                                      }}
+                                    />
+                                  </label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <label className="text-xs font-semibold text-slate-600">
-                        {isKy ? "Башталышы" : "Начало"}
-                        <input
-                          type="time"
-                          className="input mt-1"
-                          disabled={!canEdit}
-                          value={minutesToTime(p.startMinutes)}
-                          onChange={(e) => {
-                            const leadership = draft.leadership.map((x, j) =>
-                              j === i
-                                ? {
-                                    ...x,
-                                    startMinutes: timeToMinutes(e.target.value),
-                                  }
-                                : x
-                            );
-                            patch({ leadership });
-                          }}
-                        />
-                      </label>
-                      <label className="text-xs font-semibold text-slate-600">
-                        {isKy ? "Аягы" : "Окончание"}
-                        <input
-                          type="time"
-                          className="input mt-1"
-                          disabled={!canEdit}
-                          value={minutesToTime(p.endMinutes)}
-                          onChange={(e) => {
-                            const leadership = draft.leadership.map((x, j) =>
-                              j === i
-                                ? {
-                                    ...x,
-                                    endMinutes: timeToMinutes(e.target.value),
-                                  }
-                                : x
-                            );
-                            patch({ leadership });
-                          }}
-                        />
-                      </label>
-                    </div>
+                    {leadershipDayWindows(p).length === 0 && (
+                      <p className="text-xs text-slate-400">
+                        {isKy
+                          ? "Күндү белгилеңиз — ошол күндүн убактысы төмөндө ачылат."
+                          : "Отметьте дни: для каждого выбранного дня ниже откроется своё время."}
+                      </p>
+                    )}
                   </div>
                 )}
               </section>

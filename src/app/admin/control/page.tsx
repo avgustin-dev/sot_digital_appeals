@@ -18,6 +18,10 @@ import { ClipboardCheck } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { routes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
+import {
+  ASSIGNMENT_STATUSES,
+  assignmentStatusLabel,
+} from "@/lib/assignmentStatus";
 
 const ACTION_PRESETS = [
   { ru: "Ход исполнения", ky: "Аткаруунун жүрүшү" },
@@ -298,7 +302,7 @@ export default function ControlPage() {
                         {isKy ? "мөөнөт" : "срок"}{" "}
                         {a.assignment?.dueDate || "—"}
                         {a.assignment?.status &&
-                          ` · ${a.assignment.status}`}
+                          ` · ${assignmentStatusLabel(a.assignment.status, isKy)}`}
                       </div>
                     </button>
                   </li>
@@ -339,14 +343,7 @@ export default function ControlPage() {
                 </div>
                 {selected.assignment && (
                   <div className="mt-2 flex flex-wrap gap-2">
-                    {(
-                      [
-                        "open",
-                        "in_progress",
-                        "done",
-                        "overdue",
-                      ] as const
-                    ).map((st) => (
+                    {ASSIGNMENT_STATUSES.map((st) => (
                       <button
                         key={st}
                         type="button"
@@ -356,20 +353,21 @@ export default function ControlPage() {
                             setMsg(res.error);
                             return;
                           }
+                          const label = assignmentStatusLabel(st, isKy);
                           setMsg(
                             isKy
-                              ? `Статус: ${st}`
-                              : `Статус поручения: ${st}`
+                              ? `Статус: ${label}`
+                              : `Статус поручения: ${label}`
                           );
                         }}
                         className={cn(
-                          "rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize",
+                          "rounded-full border px-2.5 py-1 text-[11px] font-semibold",
                           selected.assignment?.status === st
                             ? "border-court-navy bg-court-navy text-white"
                             : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
                         )}
                       >
-                        {st}
+                        {assignmentStatusLabel(st, isKy)}
                       </button>
                     ))}
                   </div>

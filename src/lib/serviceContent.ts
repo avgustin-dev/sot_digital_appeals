@@ -1,5 +1,9 @@
 import { catalog, cloneCatalog } from "./catalog";
 import { canonicalPublicHref } from "./routes";
+import {
+  leadershipDayWindows,
+  withLeadershipSchedule,
+} from "./leadershipSchedule";
 import type { ServiceContent } from "./types";
 
 export function defaultServiceContent(): ServiceContent {
@@ -39,16 +43,23 @@ export function mergeServiceContent(
       Array.isArray(partial.hubNav) ? partial.hubNav : d.hubNav
     ),
     leadership: Array.isArray(partial.leadership)
-      ? partial.leadership.map((p) => ({
-          ...d.leadership[0],
-          ...p,
-          weekdays: Array.isArray(p.weekdays) ? p.weekdays : [2, 4],
-          showInSchedule: p.showInSchedule ?? true,
-          bookable: p.bookable ?? true,
-          windowKind: p.windowKind ?? "calendar",
-          startMinutes: p.startMinutes ?? 8 * 60,
-          endMinutes: p.endMinutes ?? 12 * 60,
-        }))
+      ? partial.leadership.map((p) => {
+          const merged = {
+            ...d.leadership[0],
+            ...p,
+            weekdays: Array.isArray(p.weekdays) ? p.weekdays : [2, 4],
+            showInSchedule: p.showInSchedule ?? true,
+            bookable: p.bookable ?? true,
+            windowKind: p.windowKind ?? "calendar",
+            startMinutes: p.startMinutes ?? 8 * 60,
+            endMinutes: p.endMinutes ?? 12 * 60,
+            dayWindows: Array.isArray(p.dayWindows) ? p.dayWindows : undefined,
+          };
+          return withLeadershipSchedule(
+            merged,
+            leadershipDayWindows(merged)
+          );
+        })
       : d.leadership,
     processSteps: Array.isArray(partial.processSteps)
       ? partial.processSteps

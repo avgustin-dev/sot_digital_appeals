@@ -4,6 +4,7 @@ import { MapPin, Phone } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useStore } from "@/lib/store";
 import { mergeServiceContent, pickLocale } from "@/lib/serviceContent";
+import { leadershipScheduleLabels } from "@/lib/leadershipSchedule";
 
 /** Контакты и график руководства — из CMS публичного сайта */
 export function CourtContactsBlock({
@@ -95,7 +96,9 @@ export function CourtContactsBlock({
               </tr>
             </thead>
             <tbody>
-              {schedule.map((row, i) => (
+              {schedule.map((row, i) => {
+                const labels = leadershipScheduleLabels(row, state.calendar);
+                return (
                 <tr key={row.id}>
                   <td className="!px-2 !py-2 font-mono text-xs text-slate-500">
                     {i + 1}
@@ -107,13 +110,14 @@ export function CourtContactsBlock({
                     {pickLocale(isKy, row.positionRu, row.positionKy)}
                   </td>
                   <td className="!px-2 !py-2 text-sm">
-                    {pickLocale(isKy, row.weekdayRu, row.weekdayKy)}
+                    {isKy ? labels.weekdayKy : labels.weekdayRu}
                   </td>
                   <td className="!px-2 !py-2 text-xs tabular-nums text-slate-700">
-                    {pickLocale(isKy, row.timeRu, row.timeKy)}
+                    {isKy ? labels.timeKy : labels.timeRu}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
           <p className="mt-2 text-[11px] text-slate-400">

@@ -272,7 +272,17 @@ export interface LeadershipPerson {
   showInSchedule: boolean;
   bookable: boolean;
   windowKind: "fixed" | "calendar";
+  /** Дни приёма (0 = вс … 4 = чт). Дублирует dayWindows для совместимости. */
   weekdays: number[];
+  /** Общее окно, если dayWindows пуст (старые данные). */
+  startMinutes: number;
+  endMinutes: number;
+  /** Личный график: своё время на каждый день. */
+  dayWindows?: LeadershipDayWindow[];
+}
+
+export interface LeadershipDayWindow {
+  weekday: number;
   startMinutes: number;
   endMinutes: number;
 }

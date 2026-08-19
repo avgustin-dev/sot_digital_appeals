@@ -257,3 +257,13 @@ a {
 input[type="time"] {
   font-variant-numeric: tabular-nums;
 }
+
+/* QR: модули SVG не должны сжиматься из‑за box-sizing: border-box */
+.ticket-qr svg,
+.ticket-qr svg * {
+  box-sizing: content-box !important;
+}
+.ticket-qr svg {
+  display: block;
+  overflow: visible;
+}

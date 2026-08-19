@@ -89,7 +89,7 @@ export function VisitTicket({
           </div>
         </div>
       </div>
-      <div className="grid gap-4 p-4 sm:grid-cols-[1fr_140px] sm:items-start">
+      <div className="grid gap-4 p-4 sm:grid-cols-[1fr_164px] sm:items-start">
         <div className="space-y-2 text-sm">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">

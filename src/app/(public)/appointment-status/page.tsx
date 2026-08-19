@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { SlotPicker } from "@/components/booking/SlotPicker";
 import { VisitTicket } from "@/components/booking/VisitTicket";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -22,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 import { PageLoader } from "@/components/ui/PageLoader";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { assignmentStatusLabel } from "@/lib/assignmentStatus";
 
 type Panel = "find" | "details" | "reschedule" | "history" | "appeal";
 
@@ -37,6 +39,7 @@ export default function MyAppointmentPage() {
   } = useStore();
   const { t, lang } = useI18n();
   const isKy = lang === "ky";
+  const router = useRouter();
 
   const [code, setCode] = useState("");
   const [pin, setPin] = useState("");
@@ -68,13 +71,36 @@ export default function MyAppointmentPage() {
     }
   }, []);
 
+  const appeal: AppealCard | undefined = apt
+    ? state.appeals.find(
+        (a) => a.appointmentId === apt.id || a.code === apt.code
+      )
+    : undefined;
+
+  useEffect(() => {
+    if (!ready || !apt) return;
+    const visitDone =
+      apt.status === "completed" ||
+      (appeal &&
+        ["answered", "closed", "reception_done", "in_control"].includes(
+          appeal.stage
+        ));
+    if (!visitDone) return;
+    if (appeal?.feedback) return;
+    router.replace(routes.evaluationByCode(apt.code));
+  }, [
+    ready,
+    apt,
+    apt?.status,
+    apt?.code,
+    appeal?.stage,
+    appeal?.feedback,
+    router,
+  ]);
+
   if (!ready) {
     return <PageLoader label={t.common.loading} />;
   }
-
-  const appeal: AppealCard | undefined = apt
-    ? state.appeals.find((a) => a.appointmentId === apt.id)
-    : undefined;
 
   async function refresh() {
     const found = await findAppointment(code, pin);
@@ -527,7 +553,7 @@ export default function MyAppointmentPage() {
                   <p className="mt-1 text-court-ink">{appeal.assignment.text}</p>
                   <p className="mt-1 text-court-muted">
                     {appeal.assignment.responsibleName} ·{" "}
-                    {appeal.assignment.status}
+                    {assignmentStatusLabel(appeal.assignment.status, isKy)}
                   </p>
                 </div>
               )}

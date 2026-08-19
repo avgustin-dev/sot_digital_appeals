@@ -63,7 +63,7 @@ PIN записи — 4 цифры, **только в ответе на POST /pub
 - схема: 08:00–08:20, 08:25–08:45, …
 - горизонт записи — `bookingHorizonDays` (45)
 - слот занят, если есть запись на ту же дату, `targetId` и `slotStart`, статус не `cancelled`/`rejected`
-- у руководства своё окно: `leadership[].weekdays`, `startMinutes`, `endMinutes` (минуты от полуночи; четверг = 4, воскресенье = 0)
+- у руководства своё окно: `leadership[].dayWindows[]` (`weekday`, `startMinutes`, `endMinutes` на каждый день). Старые поля `weekdays` + одно `startMinutes`/`endMinutes` тоже принимаются.
 
 Свободные слоты считает **бэкенд**. Фронт только рисует ответ `GET /public/slots`.
 При переносе записи передаётся `excludeAppointmentId`, чтобы текущий слот оставался доступен.

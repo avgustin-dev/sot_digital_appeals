@@ -8,7 +8,7 @@ import {
   startOfDay,
 } from "date-fns";
 import type { Appointment, CalendarSettings, ServiceContent, TimeSlot } from "./types";
-import { resolveTargetWindow } from "./targets";
+import { resolveTargetWindow, resolveTargetWindowForDate } from "./targets";
 
 /** Минуты → "HH:mm" */
 export function minutesToTime(total: number): string {
@@ -121,7 +121,7 @@ export function getAvailableSlotsForDate(
   const nowMinutes =
     new Date().getHours() * 60 + new Date().getMinutes();
   const win = targetId
-    ? resolveTargetWindow(targetId, settings, sc)
+    ? resolveTargetWindowForDate(targetId, date, settings, sc)
     : {
         startMinutes: settings.dayStartMinutes,
         endMinutes: settings.dayEndMinutes,

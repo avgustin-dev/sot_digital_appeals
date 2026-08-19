@@ -168,7 +168,10 @@
         4
       ],
       "startMinutes": 540,
-      "endMinutes": 720
+      "endMinutes": 720,
+      "dayWindows": [
+        { "weekday": 4, "startMinutes": 540, "endMinutes": 720 }
+      ]
     },
     {
       "id": "deputy_1",
@@ -215,7 +218,10 @@
         2
       ],
       "startMinutes": 900,
-      "endMinutes": 960
+      "endMinutes": 960,
+      "dayWindows": [
+        { "weekday": 2, "startMinutes": 900, "endMinutes": 960 }
+      ]
     },
     {
       "id": "deputy_kamchybekov",
@@ -238,7 +244,10 @@
         4
       ],
       "startMinutes": 540,
-      "endMinutes": 600
+      "endMinutes": 600,
+      "dayWindows": [
+        { "weekday": 4, "startMinutes": 540, "endMinutes": 600 }
+      ]
     },
     {
       "id": "deputy_other",

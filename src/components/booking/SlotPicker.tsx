@@ -26,7 +26,7 @@ import {
   weekdayRu,
 } from "@/lib/slots";
 import { cn } from "@/lib/utils";
-import { resolveTargetWindow, targetShort } from "@/lib/targets";
+import { resolveTargetWindowForDate, targetShort } from "@/lib/targets";
 import { useRemoteApi } from "@/config/env";
 import { backend } from "@/api/client";
 import type { TimeSlot } from "@/lib/types";
@@ -150,8 +150,9 @@ export function SlotPicker({
     return eachDayOfInterval({ start, end });
   }, [month]);
 
-  const win = resolveTargetWindow(
+  const win = resolveTargetWindowForDate(
     targetId || "reception",
+    date,
     state.calendar,
     state.serviceContent
   );

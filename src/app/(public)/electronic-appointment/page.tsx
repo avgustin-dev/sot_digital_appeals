@@ -464,6 +464,12 @@ export default function BookPage() {
           >
             {t.book.manage}
           </Link>
+          <Link
+            href={routes.evaluationByCode(result.code)}
+            className="btn-outline"
+          >
+            {isKy ? "Сервисти баалоо" : "Оценить сервис"}
+          </Link>
           <Link href="/" className="btn-outline">
             {t.book.toHome}
           </Link>

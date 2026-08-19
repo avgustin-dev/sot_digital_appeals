@@ -1205,7 +1205,7 @@ export const usePlatformStore = create<PlatformStore>()(
                         at: now,
                         channel: "system" as const,
                         title: "Приём проведён",
-                        body: "По итогам приёма выдано поручение. Ответственный приступит к исполнению.",
+                        body: `По итогам приёма выдано поручение. Оцените работу сервиса: /service-evaluation/${appeal.code}`,
                         read: false,
                       },
                       ...a.notifications,

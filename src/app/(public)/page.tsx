@@ -78,6 +78,16 @@ export default function HomePage() {
     const stage = appeal
       ? t.stages[appeal.stage] || appeal.stage
       : t.statuses[appointment.status] || appointment.status;
+    const visitDone =
+      appointment.status === "completed" ||
+      (appeal &&
+        ["answered", "closed", "reception_done", "in_control"].includes(
+          appeal.stage
+        ));
+    if (visitDone && !appeal?.feedback) {
+      router.push(evaluationHref(appointment.code));
+      return;
+    }
     setStatusOk(true);
     setStatusMsg(
       isKy

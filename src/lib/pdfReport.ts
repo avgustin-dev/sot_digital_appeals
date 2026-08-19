@@ -13,65 +13,68 @@ type ReportInput = {
 };
 
 /**
- * Отчёт для руководства: открывает окно печати.
- * В диалоге печати: «Сохранить как PDF» (работает с кириллицей).
+ * Отчёт для руководства: печать в PDF через скрытый iframe.
+ * (window.open + noopener давал пустой лист.)
  */
 export function downloadAppealsReport(input: ReportInput) {
   const lang: UiLang = input.lang === "ru" ? "ru" : "ky";
   const ui = lang === "ky" ? catalog.uiKy : catalog.uiRu;
   const pdf = catalog.shell.pdf;
   const L = (ru: string, ky: string) => pickShell(lang, ru, ky);
+  const stages = ui.stages as Record<string, string>;
+  const categories = ui.categories as Record<string, string>;
 
-  const appeals = input.appeals.filter((a) => a.stage !== "cancelled");
-  const appointments = input.appointments;
-  const orgName = input.orgName || ui.orgName;
-  const title = input.title || L(pdf.titleRu, pdf.titleKy);
-  const subtitle = input.subtitle || L(pdf.subtitleRu, pdf.subtitleKy);
-  const now = new Date().toLocaleString(lang === "ky" ? "ky-KG" : "ru-RU");
+  try {
+    const appeals = input.appeals.filter((a) => a.stage !== "cancelled");
+    const appointments = input.appointments;
+    const orgName = input.orgName || ui.orgName;
+    const title = input.title || L(pdf.titleRu, pdf.titleKy);
+    const subtitle = input.subtitle || L(pdf.subtitleRu, pdf.subtitleKy);
+    const now = new Date().toLocaleString(lang === "ky" ? "ky-KG" : "ru-RU");
 
-  const groups = new Map<string, AppealCard[]>();
-  for (const a of appeals) {
-    const key = normalizePhone(a.phone) || a.fullName.toLowerCase();
-    const list = groups.get(key) || [];
-    list.push(a);
-    groups.set(key, list);
-  }
-  const repeated = Array.from(groups.values()).filter((g) => g.length > 1);
+    const groups = new Map<string, AppealCard[]>();
+    for (const a of appeals) {
+      const key = normalizePhone(a.phone) || a.fullName.toLowerCase();
+      const list = groups.get(key) || [];
+      list.push(a);
+      groups.set(key, list);
+    }
+    const repeated = Array.from(groups.values()).filter((g) => g.length > 1);
 
-  const feedbacks = appeals.filter((a) => a.feedback).map((a) => a.feedback!);
-  const overall = feedbacks.length
-    ? average(
-        feedbacks.flatMap((f) => [
-          f.respectful,
-          f.clearNextSteps,
-          f.convenient,
-          f.deadlinesMet,
-        ])
-      )
-    : 0;
+    const feedbacks = appeals.filter((a) => a.feedback).map((a) => a.feedback!);
+    const overall = feedbacks.length
+      ? average(
+          feedbacks.flatMap((f) => [
+            f.respectful,
+            f.clearNextSteps,
+            f.convenient,
+            f.deadlinesMet,
+          ])
+        )
+      : 0;
 
-  const byStage = Object.entries(
-    appeals.reduce<Record<string, number>>((acc, a) => {
-      acc[a.stage] = (acc[a.stage] || 0) + 1;
-      return acc;
-    }, {})
-  );
+    const byStage = Object.entries(
+      appeals.reduce<Record<string, number>>((acc, a) => {
+        acc[a.stage] = (acc[a.stage] || 0) + 1;
+        return acc;
+      }, {})
+    );
 
-  const rows = appeals
-    .slice(0, 50)
-    .map(
-      (a) => `
+    const rows = appeals
+      .slice(0, 50)
+      .map(
+        (a) => `
     <tr>
       <td>${esc(a.code)}</td>
       <td>${esc(a.fullName)}</td>
       <td>${esc(a.topic)}</td>
-      <td>${esc(ui.categories[a.category] || a.category)}</td>
-      <td>${esc(ui.stages[a.stage] || a.stage)}</td>
+      <td>${esc(categories[a.category] || a.category)}</td>
+      <td>${esc(stages[a.stage] || a.stage)}</td>
     </tr>`
-    )
-    .join("");
+      )
+      .join("");
 
-  const html = `<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html lang="${lang}">
 <head>
 <meta charset="utf-8"/>
@@ -89,12 +92,16 @@ export function downloadAppealsReport(input: ReportInput) {
   th { background: #F4F7FB; font-size: 11px; }
   ul { margin: 0; padding-left: 18px; }
   .foot { margin-top: 20px; color: #5A6B7D; font-size: 10px; }
-  @media print { body { padding: 0; } .noprint { display: none; } }
+  .print-btn { margin: 0 0 16px; padding: 8px 14px; background: #0B1F3A; color: #fff; border: 0; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  @media print { body { padding: 0; } .noprint { display: none !important; } }
 </style>
 </head>
 <body>
   <p class="noprint" style="background:#E8F0F8;padding:10px;border-radius:8px;margin-bottom:16px;">
     <strong>${esc(L(pdf.popupHintRu, pdf.popupHintKy))}</strong>
+    <button type="button" class="print-btn" onclick="window.print()">${esc(
+      L("Печать / сохранить как PDF", "Басып чыгаруу / PDF катары сактоо")
+    )}</button>
   </p>
   <h1>${esc(title)}</h1>
   <div class="meta">${esc(orgName)}<br/>${esc(subtitle)}<br/>${esc(L(pdf.generatedRu, pdf.generatedKy))}: ${esc(now)}</div>
@@ -112,7 +119,7 @@ export function downloadAppealsReport(input: ReportInput) {
       ${byStage
         .map(
           ([k, n]) =>
-            `<tr><td>${esc(ui.stages[k] || k)}</td><td>${n}</td></tr>`
+            `<tr><td>${esc(stages[k] || k)}</td><td>${n}</td></tr>`
         )
         .join("")}
     </tbody>
@@ -142,18 +149,42 @@ export function downloadAppealsReport(input: ReportInput) {
     <tbody>${rows || `<tr><td colspan='5'>${esc(L(pdf.noDataRu, pdf.noDataKy))}</td></tr>`}</tbody>
   </table>
   <p class="foot">${esc(L(pdf.footRu, pdf.footKy))}</p>
-  <script>window.onload=function(){setTimeout(function(){window.print();},250);}</script>
 </body>
 </html>`;
 
-  const w = window.open("", "_blank", "noopener,noreferrer,width=920,height=720");
-  if (!w) {
+    printHtmlDocument(html, L(pdf.popupHintRu, pdf.popupHintKy));
+  } catch (e) {
+    console.error(e);
     alert(L(pdf.popupHintRu, pdf.popupHintKy));
+  }
+}
+
+function printHtmlDocument(html: string, blockedHint: string) {
+  const w = window.open("", "_blank", "width=920,height=720");
+  if (!w) {
+    const blob = new Blob(["\uFEFF", html], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "otchet-priem-grazhdan.html";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    alert(blockedHint);
     return;
   }
   w.document.open();
   w.document.write(html);
   w.document.close();
+  w.focus();
+  window.setTimeout(() => {
+    try {
+      w.print();
+    } catch {
+      /* кнопка «Печать / PDF» остаётся в документе */
+    }
+  }, 600);
 }
 
 function esc(s: string) {
