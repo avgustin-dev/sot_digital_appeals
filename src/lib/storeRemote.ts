@@ -634,10 +634,10 @@ export function wrapRemote(
         return { ok: true as const };
       }
       try {
-        await backend.staff.putContent(
+        const saved = await backend.staff.putContent(
           patch as import("./types").ServiceContent
         );
-        store.updateServiceContent(patch);
+        store.updateServiceContent(saved ?? patch);
         return { ok: true as const };
       } catch (e) {
         return fail(e);
