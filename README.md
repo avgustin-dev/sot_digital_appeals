@@ -1,8 +1,10 @@
 # Цифровая платформа приёма граждан
 
-Фронт: Next.js. Бэкенд подключается по контракту `docs/backend/`.
+Фронт: Next.js. Это **основной репозиторий под бэкенд**. CMS на фронте пустой: тексты сайта, руководство и дерево допуска приходят из API.
 
-**Если вы собираете API:** откройте `docs/backend/ENDPOINTS.md` и `docs/backend/openapi.yaml`. Фронт уже вызывает эти методы из `src/api/client.ts`.
+Контракт: `docs/backend/ENDPOINTS.md`, `docs/backend/openapi.yaml`. Клиент: `src/api/client.ts`. Пример сида для бэка: `docs/backend/seed/`.
+
+Демо без API (шаблоны `content/` + учебные данные, Vercel): [sot_digital_appeals](https://github.com/avgustin-dev/sot_digital_appeals).
 
 ## Запуск
 
@@ -16,17 +18,13 @@ http://localhost:3000 · служебный кабинет: http://localhost:300
 
 ## Подключение бэкенда
 
-Спека: `docs/backend/openapi.yaml`. Клиент, который уже вызывает фронт: `src/api/client.ts`. Обзор для генерации API: `ARCHITECTURE.md`.
-
 В `.env.local`:
 
 ```
 NEXT_PUBLIC_API_URL=https://host/api/v1
 ```
 
-Пока URL пуст, данные живут в браузере. Пароли сотрудников в localStorage не пишутся.
-
-Статичные тексты — папка `content/` (их же отдаёт `GET /public/bootstrap`).
+Без URL кабинет в production не заполняется учебными учётками. Оболочка интерфейса (кнопки RU/KY) — `src/locales/`.
 
 Публичные адреса для писем и талона: `/electronic-appointment`, `/appointment-status`, `/service-evaluation/{code}`.
 

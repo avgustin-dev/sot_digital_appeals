@@ -1,0 +1,82 @@
+Сид текстов для бэкенда
+=======================
+Источник: папка content/ (как было на фронте).
+Фронт эти JSON больше не читает. Бэк отдаёт их через API,
+админ потом правит в кабинете.
+
+Файлы лежат рядом, в папке seed/:
+
+
+1. seed/site.json  →  GET /public/bootstrap.site
+                      PUT /staff/content
+
+Это весь публичный сайт:
+- названия суда и сервиса (orgName*, appName*)
+- шапка headerNav, карточки главной hubNav
+- тексты главной (hubTitle, hubLead, memo, allowed/forbidden)
+- контакты contacts
+- руководство leadership[] (ФИО, должности, график, dayWindows)
+- этапы processSteps
+- правила записи rules (то же, что booking-rules.json)
+
+Правила уже внутри site.rules. Отдельный booking-rules.json —
+дубль, можно не грузить вторым запросом.
+
+
+2. seed/eligibility-tree.json  →  GET /public/bootstrap.eligibilityTree
+                                  PUT /staff/eligibility   { "nodes": [ ... ] }
+
+Дерево допуска записи. Корень: organization, court_activity,
+legislation, other. У листьев allowed true/false, category,
+topicRu/Ky, при отказе — refusal.
+
+
+3. seed/calendar-rules.json  →  поле calendar.rulesText
+   GET/PUT /staff/calendar
+
+Только длинный текст правил календаря.
+Сами часы на бэке (как было на фронте по умолчанию):
+
+  receptionWeekdays: [2, 4]     // вторник, четверг
+  dayStartMinutes: 480          // 08:00
+  dayEndMinutes: 720            // 12:00
+  slotDurationMinutes: 20
+  breakMinutes: 5
+  bookingHorizonDays: 45
+  closedDates: []
+  extraOpenDates: []
+  rulesText: из calendar-rules.json
+
+
+4. seed/booking-rules.json
+   Не отдельный эндпоинт. Содержимое уже в site.json → rules.
+
+
+Не копировать на бэк
+--------------------
+ui.ru.json, ui.ky.json, shell.json — кнопки и 404 фронта.
+dictionaries.json — дубли статусов/ФИО; источник истины теперь site.json.
+survey.json — опросник отложен, не подключать.
+
+
+График руководства в site.leadership
+------------------------------------
+chairman              windowKind=fixed  чт 09:00–12:00
+                      dayWindows: [{ weekday:4, startMinutes:540, endMinutes:720 }]
+deputy_bakirova       windowKind=fixed  вт 15:00–16:00
+                      dayWindows: [{ weekday:2, startMinutes:900, endMinutes:960 }]
+deputy_kamchybekov    windowKind=fixed  чт 09:00–10:00
+                      dayWindows: [{ weekday:4, startMinutes:540, endMinutes:600 }]
+deputy_other          windowKind=calendar  (часы из календаря платформы)
+reception             windowKind=calendar
+
+weekday: 0=вс, 1=пн, 2=вт, 3=ср, 4=чт, 5=пт, 6=сб.
+
+
+Как залить
+----------
+При старте (или миграции) положить site.json в CMS-контент,
+eligibility-tree.json в дерево допуска,
+rulesText в календарь.
+GET /public/bootstrap должен вернуть именно это.
+Дальше админ меняет через PUT, сид больше не затирает сохранённое.

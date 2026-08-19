@@ -12,9 +12,9 @@
 | `src/api/client.ts` | Клиент, который фронт уже вызывает |
 | `src/api/paths.ts` | Пути `/api/v1/...` |
 | `src/api/dto.ts` | Типы запросов/ответов (camelCase) |
-| `content/` | Сид текстов, дерева допуска, календаря, опросника |
+| `docs/backend/seed/` | Пример сида текстов для бэкенда (`GET /public/bootstrap`) |
 
-Пока `NEXT_PUBLIC_API_URL` пуст, фронт работает на локальном контуре (Zustand). Когда URL задан, все публичные и служебные действия идут в `backend.*`.
+Пока `NEXT_PUBLIC_API_URL` пуст, фронт работает на локальном контуре (Zustand). CMS при этом пустой. Когда URL задан, все публичные и служебные действия идут в `backend.*`.
 
 ---
 
@@ -37,8 +37,8 @@
 
 ```
 NEXT_PUBLIC_API_URL пуст
-  → локальный контур: content/ + Zustand
-  → учебные записи кабинета, если NEXT_PUBLIC_DEMO не false (только dev)
+  → локальный контур: пустой CMS + Zustand
+  → учебные записи кабинета только при NEXT_PUBLIC_DEMO=true или в dev
 
 NEXT_PUBLIC_API_URL=https://host/api/v1
   → GET /public/bootstrap при старте
